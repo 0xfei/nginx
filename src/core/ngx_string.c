@@ -779,7 +779,9 @@ ngx_strlcasestrn(u_char *s1, u_char *last, u_char *s2, size_t n)
     return --s1;
 }
 
-
+/*
+    strcmp reserve
+*/
 ngx_int_t
 ngx_rstrncmp(u_char *s1, u_char *s2, size_t n)
 {
@@ -837,7 +839,10 @@ ngx_rstrncasecmp(u_char *s1, u_char *s2, size_t n)
     }
 }
 
-
+/*
+    compare u_char* with ngx_memcmp
+    s1 and s2 with length n1 and n2
+*/
 ngx_int_t
 ngx_memn2cmp(u_char *s1, u_char *s2, size_t n1, size_t n2)
 {
@@ -862,7 +867,12 @@ ngx_memn2cmp(u_char *s1, u_char *s2, size_t n1, size_t n2)
     return z;
 }
 
+/*
+ * compare specific string , like dns\filename etc.
+ * nothing special besides the lowest character
+*/
 
+// dns_strcmp
 ngx_int_t
 ngx_dns_strcmp(u_char *s1, u_char *s2)
 {
@@ -933,7 +943,11 @@ ngx_filename_cmp(u_char *s1, u_char *s2, size_t n)
     return 0;
 }
 
-
+/*
+ *
+ * ngx number change
+ *
+*/
 ngx_int_t
 ngx_atoi(u_char *line, size_t n)
 {
@@ -950,7 +964,8 @@ ngx_atoi(u_char *line, size_t n)
         if (*line < '0' || *line > '9') {
             return NGX_ERROR;
         }
-
+        // this logical is intresting!
+        // we must make sure the number is less than max_int
         if (value >= cutoff && (value > cutoff || *line - '0' > cutlim)) {
             return NGX_ERROR;
         }
@@ -1003,6 +1018,8 @@ ngx_atofp(u_char *line, size_t n, size_t point)
         }
 
         value = value * 10 + (*line - '0');
+        // interesting!! every time point -= dot, then at end, the point will be right!!
+        // we donot need to count it at last.
         point -= dot;
     }
 
@@ -1017,7 +1034,9 @@ ngx_atofp(u_char *line, size_t n, size_t point)
     return value;
 }
 
-
+/*
+    NGX_MAX_SIZE_T_VALUE limit
+*/
 ssize_t
 ngx_atosz(u_char *line, size_t n)
 {
@@ -1045,7 +1064,9 @@ ngx_atosz(u_char *line, size_t n)
     return value;
 }
 
-
+/*
+    NGX_MAX_OFF_T_VALUE
+*/
 off_t
 ngx_atoof(u_char *line, size_t n)
 {
@@ -1073,7 +1094,9 @@ ngx_atoof(u_char *line, size_t n)
     return value;
 }
 
-
+/*
+    NGX_MAX_TIME_T_VALUE
+*/
 time_t
 ngx_atotm(u_char *line, size_t n)
 {
@@ -1101,7 +1124,9 @@ ngx_atotm(u_char *line, size_t n)
     return value;
 }
 
-
+/*
+    hex to int
+*/
 ngx_int_t
 ngx_hextoi(u_char *line, size_t n)
 {
@@ -1139,7 +1164,9 @@ ngx_hextoi(u_char *line, size_t n)
     return value;
 }
 
-
+/*
+    think it like intTohex
+*/
 u_char *
 ngx_hex_dump(u_char *dst, u_char *src, size_t len)
 {
@@ -1153,7 +1180,11 @@ ngx_hex_dump(u_char *dst, u_char *src, size_t len)
     return dst;
 }
 
-
+/*
+ *
+ * from now, base64 begin
+ *
+*/
 void
 ngx_encode_base64(ngx_str_t *dst, ngx_str_t *src)
 {
