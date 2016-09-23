@@ -1,0 +1,39 @@
+{
+    "configurations": [
+        {
+            "name": "Mac",
+            "includePath": ["/usr/include"],
+            "browse" : {
+                "limitSymbolsToIncludedHeaders" : true,
+                "databaseFilename" : ""
+            }
+        },
+        {
+            "name": "Linux",
+            "includePath": [
+                "/usr/include",
+                "/home/hhx/nginx/src/core",
+                "/home/hhx/nginx/src/event",
+                "/home/hhx/nginx/src/event/modules",
+                "/home/hhx/nginx/src/http",
+                "/home/hhx/nginx/src/http/modules",
+                "/home/hhx/nginx/src/mail",
+                "/home/hhx/nginx/src/misc",
+                "/home/hhx/nginx/src/os/unix",
+                "/home/hhx/nginx/src/stream"
+                ],
+            "browse" : {
+                "limitSymbolsToIncludedHeaders" : true,
+                "databaseFilename" : ""
+            }
+        },
+        {
+            "name": "Win32",
+            "includePath": ["c:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include"],
+            "browse" : {
+                "limitSymbolsToIncludedHeaders" : true,
+                "databaseFilename" : ""
+            }
+        }
+    ]
+}
