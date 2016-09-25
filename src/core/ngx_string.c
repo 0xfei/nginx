@@ -1204,7 +1204,9 @@ ngx_encode_base64url(ngx_str_t *dst, ngx_str_t *src)
     ngx_encode_base64_internal(dst, src, basis64, 0);
 }
 
-
+/*
+    base64 encode , just change bit to char
+*/
 static void
 ngx_encode_base64_internal(ngx_str_t *dst, ngx_str_t *src, const u_char *basis,
     ngx_uint_t padding)
@@ -1217,30 +1219,30 @@ ngx_encode_base64_internal(ngx_str_t *dst, ngx_str_t *src, const u_char *basis,
     d = dst->data;
 
     while (len > 2) {
-        *d++ = basis[(s[0] >> 2) & 0x3f];
-        *d++ = basis[((s[0] & 3) << 4) | (s[1] >> 4)];
-        *d++ = basis[((s[1] & 0x0f) << 2) | (s[2] >> 6)];
-        *d++ = basis[s[2] & 0x3f];
+        *d++ = basis[(s[0] >> 2) & 0x3f];                   // s[0] high 6bits
+        *d++ = basis[((s[0] & 3) << 4) | (s[1] >> 4)];      // s[0] low 2bits and s[1] 4 bits
+        *d++ = basis[((s[1] & 0x0f) << 2) | (s[2] >> 6)];   // s[1] low 4bits and s[1] high 2bits
+        *d++ = basis[s[2] & 0x3f];                          // s[2] low 6bits
 
         s += 3;
-        len -= 3;
+        len -= 3;                                           // s[0]s[1]s[2] -> d[1]d[2]d[3]d[4]
     }
 
     if (len) {
-        *d++ = basis[(s[0] >> 2) & 0x3f];
+        *d++ = basis[(s[0] >> 2) & 0x3f];                   // s[0] high 6bits, d[0] = 
 
-        if (len == 1) {
+        if (len == 1) {                                     // s[0] is last char, so d[1] = s[0] low 2bits*16
             *d++ = basis[(s[0] & 3) << 4];
             if (padding) {
                 *d++ = '=';
             }
 
-        } else {
-            *d++ = basis[((s[0] & 3) << 4) | (s[1] >> 4)];
-            *d++ = basis[(s[1] & 0x0f) << 2];
+        } else {                                            // there is s[0] and s[1]
+            *d++ = basis[((s[0] & 3) << 4) | (s[1] >> 4)];  // d[1] = s[0] low 2bits + s[1] high 4bits
+            *d++ = basis[(s[1] & 0x0f) << 2];               // d[2] = s[1] low 4bits * 4
         }
 
-        if (padding) {
+        if (padding) {                                      // padding length % 4 == 0
             *d++ = '=';
         }
     }
@@ -1302,7 +1304,9 @@ ngx_decode_base64url(ngx_str_t *dst, ngx_str_t *src)
     return ngx_decode_base64_internal(dst, src, basis64);
 }
 
-
+/*
+    base64 decode
+*/
 static ngx_int_t
 ngx_decode_base64_internal(ngx_str_t *dst, ngx_str_t *src, const u_char *basis)
 {
@@ -1319,6 +1323,10 @@ ngx_decode_base64_internal(ngx_str_t *dst, ngx_str_t *src, const u_char *basis)
         }
     }
 
+    // s[len] = '='
+    // must be encode by ngx_encode_base64 , not base64url
+    // the last or the second last is =
+    // if len%4 == 1, error, len%4==0 || 2 || 3
     if (len % 4 == 1) {
         return NGX_ERROR;
     }
@@ -1326,6 +1334,10 @@ ngx_decode_base64_internal(ngx_str_t *dst, ngx_str_t *src, const u_char *basis)
     s = src->data;
     d = dst->data;
 
+    // d[0]       d[1]      d[2]
+    // 76543210   76543210  76543210
+    // 765432 107654 321076  543210
+    // s[0]   s[1]   s[2]    s[3]
     while (len > 3) {
         *d++ = (u_char) (basis[s[0]] << 2 | basis[s[1]] >> 4);
         *d++ = (u_char) (basis[s[1]] << 4 | basis[s[2]] >> 2);
@@ -1358,6 +1370,11 @@ ngx_decode_base64_internal(ngx_str_t *dst, ngx_str_t *src, const u_char *basis)
  *    0xffffffff              error
  */
 
+/*
+    utf8 is a unicode encode implement
+    prefix 1 indicate the byte used, so ascii is: 0(ascii_number)
+    besides, if more than one byte, the other bytes must start with 10
+*/
 uint32_t
 ngx_utf8_decode(u_char **p, size_t n)
 {
@@ -1366,20 +1383,23 @@ ngx_utf8_decode(u_char **p, size_t n)
 
     u = **p;
 
+    // 0xf0 = 0b11110000
     if (u >= 0xf0) {
-
+        // low 3bits
         u &= 0x07;
         valid = 0xffff;
-        len = 3;
+        len = 3; // unicode length
 
+    // 0xe0 = 0b11100000
     } else if (u >= 0xe0) {
-
+        // low 4bits
         u &= 0x0f;
         valid = 0x7ff;
         len = 2;
 
+    // 0xc2 = 0b11000010
     } else if (u >= 0xc2) {
-
+        // low 5bits
         u &= 0x1f;
         valid = 0x7f;
         len = 1;
@@ -1398,15 +1418,22 @@ ngx_utf8_decode(u_char **p, size_t n)
     while (len) {
         i = *(*p)++;
 
+        // must be 10_____
+        // so >= 0x80
+        // but it cannot be 11____
+        // so less than 0xC0 ???
         if (i < 0x80) {
             return 0xffffffff;
         }
 
+        // real counter
+        // remove prefix 01, so take the lower 6bits
         u = (u << 6) | (i & 0x3f);
 
         len--;
     }
 
+    // valid is the smallest number??
     if (u > valid) {
         return u;
     }
@@ -1456,6 +1483,7 @@ ngx_utf8_cpystrn(u_char *dst, u_char *src, size_t n, size_t len)
         c = *src;
         *dst = c;
 
+        // 0x10000000 ascii
         if (c < 0x80) {
 
             if (c != '\0') {
@@ -1488,7 +1516,7 @@ ngx_utf8_cpystrn(u_char *dst, u_char *src, size_t n, size_t len)
 }
 
 /*
-    uri escape
+    uri escape, encode by type
 */
 uintptr_t
 ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
@@ -1500,17 +1528,19 @@ ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
                     /* " ", "#", "%", "?", %00-%1F, %7F-%FF */
 
     static uint32_t   uri[] = {
+        // 0b000 00~1F
         0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
 
-                    /* ?>=< ;:98 7654 3210  /.-, +*)( '&%$ #"!  */
+        // 20~3F    /* ?>=< ;:98 7654 3210  /.-, +*)( '&%$ #"!  */
         0x80000029, /* 1000 0000 0000 0000  0000 0000 0010 1001 */
 
-                    /* _^]\ [ZYX WVUT SRQP  ONML KJIH GFED CBA@ */
+        // 40~5F    /* _^]\ [ZYX WVUT SRQP  ONML KJIH GFED CBA@ */
         0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
 
-                    /*  ~}| {zyx wvut srqp  onml kjih gfed cba` */
+        // 60~7F    /*  ~}| {zyx wvut srqp  onml kjih gfed cba` */
         0x80000000, /* 1000 0000 0000 0000  0000 0000 0000 0000 */
 
+        // 0b100 7F~FF
         0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
         0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
         0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
@@ -1632,6 +1662,10 @@ ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
         n = 0;
 
         while (size) {
+            // *src >> 5 means high 3bits
+            // 1 << (*src & 0x1f) low 5bits
+            // src 76543210
+            // escape[765] & (1 << 43210)
             if (escape[*src >> 5] & (1U << (*src & 0x1f))) {
                 n++;
             }
@@ -1659,7 +1693,7 @@ ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
 }
 
 /*
-    uri unescape 
+    uri unescape , url decode
 */
 void
 ngx_unescape_uri(u_char **dst, u_char **src, size_t size, ngx_uint_t type)
@@ -1729,11 +1763,12 @@ ngx_unescape_uri(u_char **dst, u_char **src, size_t size, ngx_uint_t type)
                 ch = (u_char) ((decoded << 4) + ch - '0');
 
                 if (type & NGX_UNESCAPE_REDIRECT) {
+                    // normal char, do not need escape
                     if (ch > '%' && ch < 0x7f) {
                         *d++ = ch;
                         break;
                     }
-
+                    // need escape
                     *d++ = '%'; *d++ = *(s - 2); *d++ = *(s - 1);
 
                     break;
