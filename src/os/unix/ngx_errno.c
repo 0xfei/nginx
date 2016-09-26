@@ -38,6 +38,7 @@ ngx_strerror(ngx_err_t err, u_char *errstr, size_t size)
                                               &ngx_unknown_error;
     size = ngx_min(size, msg->len);
 
+    // not memcpy , bug cpymem, so errstr point to errstr + size
     return ngx_cpymem(errstr, msg->data, size);
 }
 
