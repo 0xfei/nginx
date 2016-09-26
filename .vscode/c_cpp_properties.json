@@ -2,7 +2,15 @@
     "configurations": [
         {
             "name": "Mac",
-            "includePath": ["/usr/include"],
+            "includePath": [
+                "/usr/include",
+                "/Users/0x01f/Code/nginx/src/core",
+                "/Users/0x01f/Code/nginx/src/event",
+                "/Users/0x01f/Code/nginx/src/http",
+                "/Users/0x01f/Code/nginx/src/mail",
+                "/Users/0x01f/Code/nginx/src/misc",
+                "/Users/0x01f/Code/nginx/src/os",
+                "/Users/0x01f/Code/nginx/src/stream"],
             "browse" : {
                 "limitSymbolsToIncludedHeaders" : true,
                 "databaseFilename" : ""
