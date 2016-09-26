@@ -52,6 +52,10 @@ ngx_rbtree_insert(ngx_rbtree_t *tree, ngx_rbtree_node_t *node)
         if (node->parent == node->parent->parent->left) {
             temp = node->parent->parent->right;
 
+            // recursiveness
+            // if subtree is a rbtree, so we can treat is as a node
+            // if the root of subtree is black, everthing is ok
+            // else we can think it a red node, so do the loop
             if (ngx_rbt_is_red(temp)) {
                 ngx_rbt_black(node->parent);
                 ngx_rbt_black(temp);
@@ -63,7 +67,9 @@ ngx_rbtree_insert(ngx_rbtree_t *tree, ngx_rbtree_node_t *node)
                     node = node->parent;
                     ngx_rbtree_left_rotate(root, sentinel, node);
                 }
-
+                // should remember this:
+                // rbtree's five characteristics and::: 
+                // sentinel!!! this is important!!!
                 ngx_rbt_black(node->parent);
                 ngx_rbt_red(node->parent->parent);
                 ngx_rbtree_right_rotate(root, sentinel, node->parent->parent);
@@ -94,13 +100,16 @@ ngx_rbtree_insert(ngx_rbtree_t *tree, ngx_rbtree_node_t *node)
     ngx_rbt_black(*root);
 }
 
-
+/*
+    normal insert, the value is a ngx_int_t
+*/
 void
 ngx_rbtree_insert_value(ngx_rbtree_node_t *temp, ngx_rbtree_node_t *node,
     ngx_rbtree_node_t *sentinel)
 {
     ngx_rbtree_node_t  **p;
 
+    // temp always point p.father
     for ( ;; ) {
 
         p = (node->key < temp->key) ? &temp->left : &temp->right;
@@ -112,6 +121,10 @@ ngx_rbtree_insert_value(ngx_rbtree_node_t *temp, ngx_rbtree_node_t *node,
         temp = *p;
     }
 
+    // very good, for learning point and address
+    // here, p point to a data, like root.left or some node.left
+    // we can change it , so we change the tree
+    // *p = node, we insert the node
     *p = node;
     node->parent = temp;
     node->left = sentinel;
@@ -119,7 +132,9 @@ ngx_rbtree_insert_value(ngx_rbtree_node_t *temp, ngx_rbtree_node_t *node,
     ngx_rbt_red(node);
 }
 
-
+/*
+    the value is a timer value
+*/
 void
 ngx_rbtree_insert_timer_value(ngx_rbtree_node_t *temp, ngx_rbtree_node_t *node,
     ngx_rbtree_node_t *sentinel)
@@ -154,7 +169,9 @@ ngx_rbtree_insert_timer_value(ngx_rbtree_node_t *temp, ngx_rbtree_node_t *node,
     ngx_rbt_red(node);
 }
 
-
+/*
+    delete is complxity.
+*/
 void
 ngx_rbtree_delete(ngx_rbtree_t *tree, ngx_rbtree_node_t *node)
 {
@@ -321,7 +338,9 @@ ngx_rbtree_delete(ngx_rbtree_t *tree, ngx_rbtree_node_t *node)
     ngx_rbt_black(temp);
 }
 
-
+/*
+    just like below. we turn node->right son to the position of node.
+*/
 static ngx_inline void
 ngx_rbtree_left_rotate(ngx_rbtree_node_t **root, ngx_rbtree_node_t *sentinel,
     ngx_rbtree_node_t *node)
@@ -351,7 +370,10 @@ ngx_rbtree_left_rotate(ngx_rbtree_node_t **root, ngx_rbtree_node_t *sentinel,
     node->parent = temp;
 }
 
-
+/*
+    good! very good! just like the code I written. simple, readable, and right!!
+    we should change the data in ROOT.
+*/
 static ngx_inline void
 ngx_rbtree_right_rotate(ngx_rbtree_node_t **root, ngx_rbtree_node_t *sentinel,
     ngx_rbtree_node_t *node)

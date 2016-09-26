@@ -58,6 +58,7 @@ void ngx_rbtree_insert_timer_value(ngx_rbtree_node_t *root,
 
 #define ngx_rbt_red(node)               ((node)->color = 1)
 #define ngx_rbt_black(node)             ((node)->color = 0)
+// keep it simple, keep it simple.
 #define ngx_rbt_is_red(node)            ((node)->color)
 #define ngx_rbt_is_black(node)          (!ngx_rbt_is_red(node))
 #define ngx_rbt_copy_color(n1, n2)      (n1->color = n2->color)
