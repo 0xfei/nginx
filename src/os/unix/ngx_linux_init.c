@@ -28,7 +28,9 @@ static ngx_os_io_t ngx_linux_io = {
 #endif
 };
 
-
+/*
+    initialize kernel info
+*/
 ngx_int_t
 ngx_os_specific_init(ngx_log_t *log)
 {

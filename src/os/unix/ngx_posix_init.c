@@ -29,22 +29,31 @@ ngx_os_io_t ngx_os_io = {
     0
 };
 
-
+/*
+    initialize os related param
+    oskernel info
+    ngx_pagesize
+    cpuid and cacheline
+    maximum sockets
+*/
 ngx_int_t
 ngx_os_init(ngx_log_t *log)
 {
     ngx_uint_t  n;
 
 #if (NGX_HAVE_OS_SPECIFIC_INIT)
+    // os kernel
     if (ngx_os_specific_init(log) != NGX_OK) {
         return NGX_ERROR;
     }
 #endif
 
+    // save environ
     if (ngx_init_setproctitle(log) != NGX_OK) {
         return NGX_ERROR;
     }
 
+    // ngx_pagesize
     ngx_pagesize = getpagesize();
     ngx_cacheline_size = NGX_CPU_CACHE_LINE;
 
@@ -60,8 +69,10 @@ ngx_os_init(ngx_log_t *log)
         ngx_ncpu = 1;
     }
 
+    // cpuinfo get ngx_cachline_size
     ngx_cpuinfo();
 
+    // maximum open file for this process
     if (getrlimit(RLIMIT_NOFILE, &rlmt) == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, errno,
                       "getrlimit(RLIMIT_NOFILE) failed");

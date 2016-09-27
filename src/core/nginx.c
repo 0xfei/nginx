@@ -196,15 +196,17 @@ main(int argc, char *const *argv)
     // for malloc, when debug, the heap address will padding differently
     ngx_debug_init();
 
-    //
+    // write strerror into ngx_sys_errlist
     if (ngx_strerror_init() != NGX_OK) {
         return 1;
     }
 
+    // dealwith options
     if (ngx_get_options(argc, argv) != NGX_OK) {
         return 1;
     }
 
+    // ngx -v -V -t -T
     if (ngx_show_version) {
         ngx_show_version_info();
 
@@ -215,14 +217,19 @@ main(int argc, char *const *argv)
 
     /* TODO */ ngx_max_sockets = -1;
 
+    // ngx time init
     ngx_time_init();
 
 #if (NGX_PCRE)
+    // set pcre function for alloc and free memory
     ngx_regex_init();
 #endif
 
+    // getpid()
     ngx_pid = ngx_getpid();
 
+    // log??? so how did we log error before?
+    // write to stderror by write system call
     log = ngx_log_init(ngx_prefix);
     if (log == NULL) {
         return 1;
@@ -230,6 +237,7 @@ main(int argc, char *const *argv)
 
     /* STUB */
 #if (NGX_OPENSSL)
+    // this is about event
     ngx_ssl_init(log);
 #endif
 
@@ -251,6 +259,7 @@ main(int argc, char *const *argv)
         return 1;
     }
 
+    // actually, this is about conf file
     if (ngx_process_options(&init_cycle) != NGX_OK) {
         return 1;
     }
@@ -263,18 +272,23 @@ main(int argc, char *const *argv)
      * ngx_crc32_table_init() requires ngx_cacheline_size set in ngx_os_init()
      */
 
+    // alloc memory and initialize crc32 table
     if (ngx_crc32_table_init() != NGX_OK) {
         return 1;
     }
 
+    // add NGINX_VAR environ
     if (ngx_add_inherited_sockets(&init_cycle) != NGX_OK) {
         return 1;
     }
 
+    // init order of preinit modules 
     if (ngx_preinit_modules() != NGX_OK) {
         return 1;
     }
 
+    // init the most kernel struct init_cycle
+    // need to analyse the other day
     cycle = ngx_init_cycle(&init_cycle);
     if (cycle == NULL) {
         if (ngx_test_config) {
@@ -285,6 +299,7 @@ main(int argc, char *const *argv)
         return 1;
     }
 
+    // output the config messages for test
     if (ngx_test_config) {
         if (!ngx_quiet_mode) {
             ngx_log_stderr(0, "configuration file %s test is successful",
@@ -312,9 +327,11 @@ main(int argc, char *const *argv)
     }
 
     if (ngx_signal) {
+        // kill ngx_signal
         return ngx_signal_process(cycle, ngx_signal);
     }
 
+    // write kernel info to log
     ngx_os_status(cycle->log);
 
     ngx_cycle = cycle;
@@ -362,6 +379,7 @@ main(int argc, char *const *argv)
 
     ngx_use_stderr = 0;
 
+    // work start!
     if (ngx_process == NGX_PROCESS_SINGLE) {
         ngx_single_process_cycle(cycle);
 
@@ -451,13 +469,16 @@ ngx_add_inherited_sockets(ngx_cycle_t *cycle)
     ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
                   "using inherited sockets from \"%s\"", inherited);
 
-    if (ngx_array_init(&cycle->listening, cycle->pool, 10,
+    // initialize listeing as 10 array items
+    if (ngx_array_init(&cycle->listening, cycle->poreol, 10,
                        sizeof(ngx_listening_t))
         != NGX_OK)
     {
         return NGX_ERROR;
     }
 
+    // add inherited socket fd to listening 
+    // associate with it
     for (p = inherited, v = p; *p; p++) {
         if (*p == ':' || *p == ';') {
             s = ngx_atoi(v, p - v);
@@ -490,6 +511,7 @@ ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 
     ngx_inherited = 1;
 
+    // set the struct of inherated listening_t
     return ngx_set_inherited_sockets(cycle);
 }
 
@@ -693,7 +715,11 @@ ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
     return pid;
 }
 
-
+/*
+    deal with options
+    -p -c -g
+    -s set ngx_process = NGX_PROCESS_SIGNALLER
+*/
 static ngx_int_t
 ngx_get_options(int argc, char *const *argv)
 {
@@ -822,6 +848,10 @@ ngx_get_options(int argc, char *const *argv)
 }
 
 
+/*
+    use cycle's log
+    save argv and environ to ngx_argv ngx_env
+*/
 static ngx_int_t
 ngx_save_argv(ngx_cycle_t *cycle, int argc, char *const *argv)
 {
@@ -864,6 +894,11 @@ ngx_save_argv(ngx_cycle_t *cycle, int argc, char *const *argv)
 }
 
 
+/*
+    cycle->pool used
+    initialize ngx_prefix ngx_conf_prefix ngx_conf_file ngx_conf_param
+
+*/
 static ngx_int_t
 ngx_process_options(ngx_cycle_t *cycle)
 {
@@ -874,6 +909,7 @@ ngx_process_options(ngx_cycle_t *cycle)
         len = ngx_strlen(ngx_prefix);
         p = ngx_prefix;
 
+        // ngx_prefix end not /
         if (len && !ngx_path_separator(p[len - 1])) {
             p = ngx_pnalloc(cycle->pool, len + 1);
             if (p == NULL) {

@@ -31,6 +31,9 @@ extern char **environ;
 
 static char *ngx_os_argv_last;
 
+/*
+    save environ to heap address
+*/
 ngx_int_t
 ngx_init_setproctitle(ngx_log_t *log)
 {
@@ -51,6 +54,7 @@ ngx_init_setproctitle(ngx_log_t *log)
 
     ngx_os_argv_last = ngx_os_argv[0];
 
+    // after argv, there is environ
     for (i = 0; ngx_os_argv[i]; i++) {
         if (ngx_os_argv_last == ngx_os_argv[i]) {
             ngx_os_argv_last = ngx_os_argv[i] + ngx_strlen(ngx_os_argv[i]) + 1;
