@@ -60,6 +60,7 @@ ngx_radix_tree_create(ngx_pool_t *pool, ngx_int_t preallocate)
      */
 
     if (preallocate == -1) {
+        // 4K/sizeof(void*)*4
         switch (ngx_pagesize / sizeof(ngx_radix_node_t)) {
 
         /* amd64 */
@@ -81,6 +82,8 @@ ngx_radix_tree_create(ngx_pool_t *pool, ngx_int_t preallocate)
     mask = 0;
     inc = 0x80000000;
 
+    // if preallocated = 7
+    // while loop execute 7 times
     while (preallocate--) {
 
         key = 0;
@@ -104,7 +107,10 @@ ngx_radix_tree_create(ngx_pool_t *pool, ngx_int_t preallocate)
     return tree;
 }
 
-
+/*
+    insert 
+    mask means netmask 2.1/24
+*/
 ngx_int_t
 ngx_radix32tree_insert(ngx_radix_tree_t *tree, uint32_t key, uint32_t mask,
     uintptr_t value)
@@ -117,6 +123,8 @@ ngx_radix32tree_insert(ngx_radix_tree_t *tree, uint32_t key, uint32_t mask,
     node = tree->root;
     next = tree->root;
 
+    // defined by mask
+    // mask define the depth
     while (bit & mask) {
         if (key & bit) {
             next = node->right;
@@ -133,6 +141,7 @@ ngx_radix32tree_insert(ngx_radix_tree_t *tree, uint32_t key, uint32_t mask,
         node = next;
     }
 
+    // mask is zero
     if (next) {
         if (node->value != NGX_RADIX_NO_VALUE) {
             return NGX_BUSY;
@@ -142,6 +151,7 @@ ngx_radix32tree_insert(ngx_radix_tree_t *tree, uint32_t key, uint32_t mask,
         return NGX_OK;
     }
 
+    // alloc and insert the new key
     while (bit & mask) {
         next = ngx_radix_alloc(tree);
         if (next == NULL) {
@@ -164,12 +174,16 @@ ngx_radix32tree_insert(ngx_radix_tree_t *tree, uint32_t key, uint32_t mask,
         node = next;
     }
 
+    // set value
     node->value = value;
 
     return NGX_OK;
 }
 
-
+/*
+    delete
+    here, mask is understandable
+*/
 ngx_int_t
 ngx_radix32tree_delete(ngx_radix_tree_t *tree, uint32_t key, uint32_t mask)
 {
@@ -194,6 +208,8 @@ ngx_radix32tree_delete(ngx_radix_tree_t *tree, uint32_t key, uint32_t mask)
         return NGX_ERROR;
     }
 
+    // not subnode
+    // just set NGX_RADIX_NO_VALUE
     if (node->right || node->left) {
         if (node->value != NGX_RADIX_NO_VALUE) {
             node->value = NGX_RADIX_NO_VALUE;
@@ -203,6 +219,8 @@ ngx_radix32tree_delete(ngx_radix_tree_t *tree, uint32_t key, uint32_t mask)
         return NGX_ERROR;
     }
 
+    // sub node 
+    // add the list to tree.free.right
     for ( ;; ) {
         if (node->parent->right == node) {
             node->parent->right = NULL;
@@ -233,6 +251,9 @@ ngx_radix32tree_delete(ngx_radix_tree_t *tree, uint32_t key, uint32_t mask)
 }
 
 
+/*
+    find key
+*/
 uintptr_t
 ngx_radix32tree_find(ngx_radix_tree_t *tree, uint32_t key)
 {
@@ -249,6 +270,8 @@ ngx_radix32tree_find(ngx_radix_tree_t *tree, uint32_t key)
             value = node->value;
         }
 
+        // for example. number 100, 0x64
+        // 0b01100100
         if (key & bit) {
             node = node->right;
 
@@ -460,17 +483,22 @@ ngx_radix128tree_find(ngx_radix_tree_t *tree, u_char *key)
 #endif
 
 
+/*
+    get node from tree.free or alloc a node
+*/
 static ngx_radix_node_t *
 ngx_radix_alloc(ngx_radix_tree_t *tree)
 {
     ngx_radix_node_t  *p;
 
+    // tree->free point unused point
     if (tree->free) {
         p = tree->free;
         tree->free = tree->free->right;
         return p;
     }
 
+    // no node to return 
     if (tree->size < sizeof(ngx_radix_node_t)) {
         tree->start = ngx_pmemalign(tree->pool, ngx_pagesize, ngx_pagesize);
         if (tree->start == NULL) {
@@ -480,6 +508,8 @@ ngx_radix_alloc(ngx_radix_tree_t *tree)
         tree->size = ngx_pagesize;
     }
 
+    // start point next data
+    // p point the new node
     p = (ngx_radix_node_t *) tree->start;
     tree->start += sizeof(ngx_radix_node_t);
     tree->size -= sizeof(ngx_radix_node_t);
