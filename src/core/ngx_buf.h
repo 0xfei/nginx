@@ -68,6 +68,9 @@ typedef struct {
 } ngx_bufs_t;
 
 
+/*
+    ngx_output_chain
+*/
 typedef struct ngx_output_chain_ctx_s  ngx_output_chain_ctx_t;
 
 typedef ngx_int_t (*ngx_output_chain_filter_pt)(void *ctx, ngx_chain_t *in);
@@ -146,6 +149,7 @@ typedef struct {
     (ngx_buf_in_memory(b) ? (off_t) (b->last - b->pos):                      \
                             (b->file_last - b->file_pos))
 
+// define in ngx_buf.c
 ngx_buf_t *ngx_create_temp_buf(ngx_pool_t *pool, size_t size);
 ngx_chain_t *ngx_create_chain_of_bufs(ngx_pool_t *pool, ngx_bufs_t *bufs);
 
@@ -159,17 +163,20 @@ ngx_chain_t *ngx_alloc_chain_link(ngx_pool_t *pool);
     pool->chain = cl
 
 
-
+// define in ngx_output_chain.c
 ngx_int_t ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in);
 ngx_int_t ngx_chain_writer(void *ctx, ngx_chain_t *in);
 
+// define in ngx_buf.c
 ngx_int_t ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain,
     ngx_chain_t *in);
 ngx_chain_t *ngx_chain_get_free_buf(ngx_pool_t *p, ngx_chain_t **free);
 void ngx_chain_update_chains(ngx_pool_t *p, ngx_chain_t **free,
     ngx_chain_t **busy, ngx_chain_t **out, ngx_buf_tag_t tag);
 
+// coalesce file
 off_t ngx_chain_coalesce_file(ngx_chain_t **in, off_t limit);
+
 
 ngx_chain_t *ngx_chain_update_sent(ngx_chain_t *in, off_t sent);
 
