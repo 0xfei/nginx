@@ -102,6 +102,10 @@ uint32_t  ngx_crc32_table256[] = {
 uint32_t *ngx_crc32_table_short = ngx_crc32_table16;
 
 
+/*
+    initialize ngx_crc32_table_short
+    make it aligned with ngx_cacheline_size
+*/
 ngx_int_t
 ngx_crc32_table_init(void)
 {

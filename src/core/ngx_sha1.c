@@ -11,7 +11,7 @@
 #include <ngx_core.h>
 #include <ngx_sha1.h>
 
-
+//
 static const u_char *ngx_sha1_body(ngx_sha1_t *ctx, const u_char *data,
     size_t size);
 
