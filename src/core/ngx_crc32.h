@@ -17,6 +17,9 @@ extern uint32_t  *ngx_crc32_table_short;
 extern uint32_t   ngx_crc32_table256[];
 
 
+/*
+    calculate with table32_short
+*/
 static ngx_inline uint32_t
 ngx_crc32_short(u_char *p, size_t len)
 {
@@ -35,6 +38,9 @@ ngx_crc32_short(u_char *p, size_t len)
 }
 
 
+/*
+    calculate with table256
+*/
 static ngx_inline uint32_t
 ngx_crc32_long(u_char *p, size_t len)
 {
@@ -50,10 +56,12 @@ ngx_crc32_long(u_char *p, size_t len)
 }
 
 
+// = 1
 #define ngx_crc32_init(crc)                                                   \
     crc = 0xffffffff
 
 
+// calculate crcvalue of p with length len
 static ngx_inline void
 ngx_crc32_update(uint32_t *crc, u_char *p, size_t len)
 {
@@ -69,6 +77,7 @@ ngx_crc32_update(uint32_t *crc, u_char *p, size_t len)
 }
 
 
+// ^= 1
 #define ngx_crc32_final(crc)                                                  \
     crc ^= 0xffffffff
 

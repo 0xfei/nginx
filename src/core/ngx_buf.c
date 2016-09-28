@@ -8,12 +8,15 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 
-
+/*
+    create a temporary buffer with size
+*/
 ngx_buf_t *
 ngx_create_temp_buf(ngx_pool_t *pool, size_t size)
 {
     ngx_buf_t *b;
 
+    // ngx_pcalloc(pool, sizeof(ngx_buf_t))
     b = ngx_calloc_buf(pool);
     if (b == NULL) {
         return NULL;
@@ -35,6 +38,8 @@ ngx_create_temp_buf(ngx_pool_t *pool, size_t size)
      *     and flags
      */
 
+    // start point buffer start
+    // last point last unused
     b->pos = b->start;
     b->last = b->start;
     b->end = b->last + size;
@@ -44,6 +49,10 @@ ngx_create_temp_buf(ngx_pool_t *pool, size_t size)
 }
 
 
+/*
+    return poll.chain
+    or alloc ngx_chain_t from pool
+*/
 ngx_chain_t *
 ngx_alloc_chain_link(ngx_pool_t *pool)
 {
@@ -65,6 +74,10 @@ ngx_alloc_chain_link(ngx_pool_t *pool)
 }
 
 
+/*
+    as the function name says
+    ngx_chain_t contains bufs->num buf, with size bufs->size
+*/
 ngx_chain_t *
 ngx_create_chain_of_bufs(ngx_pool_t *pool, ngx_bufs_t *bufs)
 {
@@ -82,6 +95,7 @@ ngx_create_chain_of_bufs(ngx_pool_t *pool, ngx_bufs_t *bufs)
 
     for (i = 0; i < bufs->num; i++) {
 
+        // b is ngx_buf_t
         b = ngx_calloc_buf(pool);
         if (b == NULL) {
             return NULL;
@@ -123,6 +137,10 @@ ngx_create_chain_of_bufs(ngx_pool_t *pool, ngx_bufs_t *bufs)
 }
 
 
+/* 
+    alloc a copy of ngx_chain_t in
+    and contact it after chain  
+*/
 ngx_int_t
 ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain, ngx_chain_t *in)
 {
@@ -152,6 +170,11 @@ ngx_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain, ngx_chain_t *in)
 }
 
 
+/*
+    return a buf from chain free
+    free = free.next 
+    or return a empty chain with a empty buf
+*/
 ngx_chain_t *
 ngx_chain_get_free_buf(ngx_pool_t *p, ngx_chain_t **free)
 {
@@ -180,12 +203,17 @@ ngx_chain_get_free_buf(ngx_pool_t *p, ngx_chain_t **free)
 }
 
 
+/*
+    release busy+out bufs 
+    add them to free
+*/
 void
 ngx_chain_update_chains(ngx_pool_t *p, ngx_chain_t **free, ngx_chain_t **busy,
     ngx_chain_t **out, ngx_buf_tag_t tag)
 {
     ngx_chain_t  *cl;
 
+    // contact out after busy
     if (*busy == NULL) {
         *busy = *out;
 
@@ -200,10 +228,13 @@ ngx_chain_update_chains(ngx_pool_t *p, ngx_chain_t **free, ngx_chain_t **busy,
     while (*busy) {
         cl = *busy;
 
+        // cl->buf.last > cl->buf.pos
+        // means this buf is used
         if (ngx_buf_size(cl->buf) != 0) {
             break;
         }
 
+        // free buf if buf.tag is not tag
         if (cl->buf->tag != tag) {
             *busy = cl->next;
             ngx_free_chain(p, cl);
@@ -213,6 +244,9 @@ ngx_chain_update_chains(ngx_pool_t *p, ngx_chain_t **free, ngx_chain_t **busy,
         cl->buf->pos = cl->buf->start;
         cl->buf->last = cl->buf->start;
 
+        // busy = busy.next 
+        // free = orig.busy
+        // contact busy after free
         *busy = cl->next;
         cl->next = *free;
         *free = cl;
@@ -220,6 +254,10 @@ ngx_chain_update_chains(ngx_pool_t *p, ngx_chain_t **free, ngx_chain_t **busy,
 }
 
 
+/*
+    Put files together
+    coalesce them
+*/
 off_t
 ngx_chain_coalesce_file(ngx_chain_t **in, off_t limit)
 {
@@ -233,6 +271,7 @@ ngx_chain_coalesce_file(ngx_chain_t **in, off_t limit)
     fd = cl->buf->file->fd;
 
     do {
+        // size is content size this file been dealed with
         size = cl->buf->file_last - cl->buf->file_pos;
 
         if (size > limit - total) {
@@ -262,6 +301,9 @@ ngx_chain_coalesce_file(ngx_chain_t **in, off_t limit)
 }
 
 
+/*
+    use sent size buf
+*/
 ngx_chain_t *
 ngx_chain_update_sent(ngx_chain_t *in, off_t sent)
 {
@@ -273,6 +315,8 @@ ngx_chain_update_sent(ngx_chain_t *in, off_t sent)
             continue;
         }
 
+        // if sent == 0
+        // then return next normal(file memory) buf
         if (sent == 0) {
             break;
         }
@@ -282,6 +326,7 @@ ngx_chain_update_sent(ngx_chain_t *in, off_t sent)
         if (sent >= size) {
             sent -= size;
 
+            // buf used
             if (ngx_buf_in_memory(in->buf)) {
                 in->buf->pos = in->buf->last;
             }

@@ -42,6 +42,9 @@ static ngx_int_t ngx_output_chain_get_buf(ngx_output_chain_ctx_t *ctx,
 static ngx_int_t ngx_output_chain_copy_buf(ngx_output_chain_ctx_t *ctx);
 
 
+/*
+    deal ctx->chain with ctx->output_filter
+*/
 ngx_int_t
 ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
 {
@@ -224,6 +227,11 @@ ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
 }
 
 
+/*
+    ngx_buf is special
+    or async io file (sendfile)
+    or in memory (memory or temporary)
+*/
 static ngx_inline ngx_int_t
 ngx_output_chain_as_is(ngx_output_chain_ctx_t *ctx, ngx_buf_t *buf)
 {
@@ -240,14 +248,17 @@ ngx_output_chain_as_is(ngx_output_chain_ctx_t *ctx, ngx_buf_t *buf)
     }
 #endif
 
+    // directio
     if (buf->in_file && buf->file->directio) {
         return 0;
     }
 
+    // linux sendfile
     sendfile = ctx->sendfile;
 
 #if (NGX_SENDFILE_LIMIT)
 
+    // file too long
     if (buf->in_file && buf->file_pos >= NGX_SENDFILE_LIMIT) {
         sendfile = 0;
     }
@@ -265,10 +276,12 @@ ngx_output_chain_as_is(ngx_output_chain_ctx_t *ctx, ngx_buf_t *buf)
 
 #if (NGX_HAVE_AIO_SENDFILE)
     if (ctx->aio_preload && buf->in_file) {
+        // sendfile
         (void) ngx_output_chain_aio_setup(ctx, buf->file);
     }
 #endif
 
+    // in memory or file
     if (ctx->need_in_memory && !ngx_buf_in_memory(buf)) {
         return 0;
     }
@@ -283,11 +296,15 @@ ngx_output_chain_as_is(ngx_output_chain_ctx_t *ctx, ngx_buf_t *buf)
 
 #if (NGX_HAVE_AIO_SENDFILE)
 
+/*
+    initialize file.aio with ctx->filter_ctx data
+*/
 static ngx_int_t
 ngx_output_chain_aio_setup(ngx_output_chain_ctx_t *ctx, ngx_file_t *file)
 {
     ngx_event_aio_t  *aio;
 
+    // initialize a ngx_event_aio_t and set it to file.aio
     if (file->aio == NULL && ngx_file_aio_init(file, ctx->pool) != NGX_OK) {
         return NGX_ERROR;
     }
@@ -303,6 +320,9 @@ ngx_output_chain_aio_setup(ngx_output_chain_ctx_t *ctx, ngx_file_t *file)
 #endif
 
 
+/*
+    copy in to chain
+*/
 static ngx_int_t
 ngx_output_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain,
     ngx_chain_t *in)
@@ -335,6 +355,8 @@ ngx_output_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain,
         {
             /* split a file buf on two bufs by the sendfile limit */
 
+            // need a new buf and deal orig buf continue
+            // so this condition without in = in->next;
             b = ngx_calloc_buf(pool);
             if (b == NULL) {
                 return NGX_ERROR;
@@ -342,6 +364,7 @@ ngx_output_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain,
 
             ngx_memcpy(b, buf, sizeof(ngx_buf_t));
 
+            // mmap
             if (ngx_buf_in_memory(buf)) {
                 buf->pos += (ssize_t) (NGX_SENDFILE_LIMIT - buf->file_pos);
                 b->last = buf->pos;
@@ -363,6 +386,7 @@ ngx_output_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain,
 
 #endif
 
+        // add the new cl with data *in after ll
         cl->next = NULL;
         *ll = cl;
         ll = &cl->next;
@@ -372,6 +396,10 @@ ngx_output_chain_add_copy(ngx_pool_t *pool, ngx_chain_t **chain,
 }
 
 
+/*
+    create a align buf
+    bsize is not always effective
+*/
 static ngx_int_t
 ngx_output_chain_align_file_buf(ngx_output_chain_ctx_t *ctx, off_t bsize)
 {
@@ -384,8 +412,10 @@ ngx_output_chain_align_file_buf(ngx_output_chain_ctx_t *ctx, off_t bsize)
         return NGX_DECLINED;
     }
 
+    // useless
     ctx->directio = 1;
 
+    // size is used size
     size = (size_t) (in->file_pos - (in->file_pos & ~(ctx->alignment - 1)));
 
     if (size == 0) {
@@ -422,6 +452,9 @@ ngx_output_chain_align_file_buf(ngx_output_chain_ctx_t *ctx, off_t bsize)
 }
 
 
+/*
+    allocate a buf with bsize 
+*/
 static ngx_int_t
 ngx_output_chain_get_buf(ngx_output_chain_ctx_t *ctx, off_t bsize)
 {
@@ -472,6 +505,7 @@ ngx_output_chain_get_buf(ngx_output_chain_ctx_t *ctx, off_t bsize)
          * userland buffer direct usage conjunctly with directio
          */
 
+        // direct io must be alignment
         b->start = ngx_pmemalign(ctx->pool, size, (size_t) ctx->alignment);
         if (b->start == NULL) {
             return NGX_ERROR;
@@ -498,6 +532,10 @@ ngx_output_chain_get_buf(ngx_output_chain_ctx_t *ctx, off_t bsize)
 }
 
 
+/*
+    copy ctx->in->buf to ctx->buf
+    file thread remember
+*/
 static ngx_int_t
 ngx_output_chain_copy_buf(ngx_output_chain_ctx_t *ctx)
 {
@@ -556,6 +594,7 @@ ngx_output_chain_copy_buf(ngx_output_chain_ctx_t *ctx)
 #if (NGX_HAVE_ALIGNED_DIRECTIO)
 
         if (ctx->unaligned) {
+            // close direct io
             if (ngx_directio_off(src->file->fd) == NGX_FILE_ERROR) {
                 ngx_log_error(NGX_LOG_ALERT, ctx->pool->log, ngx_errno,
                               ngx_directio_off_n " \"%s\" failed",
@@ -567,6 +606,7 @@ ngx_output_chain_copy_buf(ngx_output_chain_ctx_t *ctx)
 
 #if (NGX_HAVE_FILE_AIO)
         if (ctx->aio_handler) {
+            // aio read src-file to dst->pos size 
             n = ngx_file_aio_read(src->file, dst->pos, (size_t) size,
                                   src->file_pos, ctx->pool);
             if (n == NGX_AGAIN) {
@@ -652,6 +692,10 @@ ngx_output_chain_copy_buf(ngx_output_chain_ctx_t *ctx)
 }
 
 
+/*
+    ngx_chain_writer
+    write chain to data->connection
+*/
 ngx_int_t
 ngx_chain_writer(void *data, ngx_chain_t *in)
 {
@@ -663,6 +707,7 @@ ngx_chain_writer(void *data, ngx_chain_t *in)
 
     c = ctx->connection;
 
+    // allocate buf and copy in to ctx->last
     for (size = 0; in; in = in->next) {
 
 #if 1

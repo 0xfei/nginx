@@ -19,7 +19,7 @@ typedef struct {
     u_char    buffer[64];
 } ngx_sha1_t;
 
-
+//
 void ngx_sha1_init(ngx_sha1_t *ctx);
 void ngx_sha1_update(ngx_sha1_t *ctx, const void *data, size_t size);
 void ngx_sha1_final(u_char result[20], ngx_sha1_t *ctx);

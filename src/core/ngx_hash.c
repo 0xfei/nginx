@@ -9,6 +9,9 @@
 #include <ngx_core.h>
 
 
+/*
+    find len str name with hashvalue key in ngx_hash_t hash 
+*/
 void *
 ngx_hash_find(ngx_hash_t *hash, ngx_uint_t key, u_char *name, size_t len)
 {
@@ -30,6 +33,7 @@ ngx_hash_find(ngx_hash_t *hash, ngx_uint_t key, u_char *name, size_t len)
             goto next;
         }
 
+        // strcmp(name, elt->name, len) == 0
         for (i = 0; i < len; i++) {
             if (name[i] != elt->name[i]) {
                 goto next;
@@ -40,6 +44,7 @@ ngx_hash_find(ngx_hash_t *hash, ngx_uint_t key, u_char *name, size_t len)
 
     next:
 
+        // next element in hash->buckets
         elt = (ngx_hash_elt_t *) ngx_align_ptr(&elt->name[0] + elt->len,
                                                sizeof(void *));
         continue;
@@ -49,6 +54,10 @@ ngx_hash_find(ngx_hash_t *hash, ngx_uint_t key, u_char *name, size_t len)
 }
 
 
+/*
+    find *.test.com
+    ngx_hash_wildcard_t hwc->value means default value
+*/
 void *
 ngx_hash_find_wc_head(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
 {
@@ -72,6 +81,7 @@ ngx_hash_find_wc_head(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
     key = 0;
 
     for (i = n; i < len; i++) {
+        // ((ngx_uint_t) key * 31 + c)
         key = ngx_hash(key, name[i]);
     }
 
@@ -98,6 +108,7 @@ ngx_hash_find_wc_head(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
          *          "*.example.com" only.
          */
 
+        // value point to the next ngx_hash_wildcard_t
         if ((uintptr_t) value & 2) {
 
             if (n == 0) {
@@ -124,6 +135,7 @@ ngx_hash_find_wc_head(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
             return hwc->value;
         }
 
+        // value means value
         if ((uintptr_t) value & 1) {
 
             if (n == 0) {
@@ -143,6 +155,10 @@ ngx_hash_find_wc_head(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
 }
 
 
+/*
+    www.test.*
+    something like above ngx_hash_find_wc_head
+*/
 void *
 ngx_hash_find_wc_tail(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
 {
@@ -163,6 +179,7 @@ ngx_hash_find_wc_tail(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
         key = ngx_hash(key, name[i]);
     }
 
+    // must end with . or .*
     if (i == len) {
         return NULL;
     }
@@ -207,6 +224,9 @@ ngx_hash_find_wc_tail(ngx_hash_wildcard_t *hwc, u_char *name, size_t len)
 }
 
 
+/*
+    find 1 2 3 combined
+*/
 void *
 ngx_hash_find_combined(ngx_hash_combined_t *hash, ngx_uint_t key, u_char *name,
     size_t len)
@@ -245,9 +265,14 @@ ngx_hash_find_combined(ngx_hash_combined_t *hash, ngx_uint_t key, u_char *name,
 }
 
 
+// length of hash for name
 #define NGX_HASH_ELT_SIZE(name)                                               \
     (sizeof(void *) + ngx_align((name)->key.len + 2, sizeof(void *)))
 
+
+/*
+    initialize ngx_hash_init_t
+*/
 ngx_int_t
 ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
 {
@@ -257,6 +282,7 @@ ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
     ngx_uint_t       i, n, key, size, start, bucket_size;
     ngx_hash_elt_t  *elt, **buckets;
 
+    // max_size == 0
     if (hinit->max_size == 0) {
         ngx_log_error(NGX_LOG_EMERG, hinit->pool->log, 0,
                       "could not build %s, you should "
@@ -265,6 +291,8 @@ ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
         return NGX_ERROR;
     }
 
+    // bucket_size must be larger than every item in names
+    // bucket_size means all the key-same hash save in this bucket
     for (n = 0; n < nelts; n++) {
         if (hinit->bucket_size < NGX_HASH_ELT_SIZE(&names[n]) + sizeof(void *))
         {
@@ -276,6 +304,7 @@ ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
         }
     }
 
+    // test contains length of all hash item , which value is the same key
     test = ngx_alloc(hinit->max_size * sizeof(u_short), hinit->pool->log);
     if (test == NULL) {
         return NGX_ERROR;
@@ -286,10 +315,12 @@ ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
     start = nelts / (bucket_size / (2 * sizeof(void *)));
     start = start ? start : 1;
 
+    // 
     if (hinit->max_size > 10000 && nelts && hinit->max_size / nelts < 100) {
         start = hinit->max_size - 1000;
     }
 
+    // find the smallest size, can cantain all the hash
     for (size = start; size <= hinit->max_size; size++) {
 
         ngx_memzero(test, size * sizeof(u_short));
@@ -313,6 +344,7 @@ ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
             }
         }
 
+        // this size can work!
         goto found;
 
     next:
@@ -328,9 +360,12 @@ ngx_hash_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names, ngx_uint_t nelts)
                   "ignoring %s_bucket_size",
                   hinit->name, hinit->name, hinit->max_size,
                   hinit->name, hinit->bucket_size, hinit->name);
+    // i think here should raise error.
 
 found:
 
+    // size is the items of key
+    // initialize length of each key need
     for (i = 0; i < size; i++) {
         test[i] = sizeof(void *);
     }
@@ -347,6 +382,7 @@ found:
     len = 0;
 
     for (i = 0; i < size; i++) {
+        // not this
         if (test[i] == sizeof(void *)) {
             continue;
         }
@@ -383,11 +419,14 @@ found:
 
     elts = ngx_align_ptr(elts, ngx_cacheline_size);
 
+    // point buckets[i] to a buffer
+    // actually buckets[i] is *ngx_hash_elt_t
     for (i = 0; i < size; i++) {
         if (test[i] == sizeof(void *)) {
             continue;
         }
 
+        // buckets[i] means find value in buckets[key]
         buckets[i] = (ngx_hash_elt_t *) elts;
         elts += test[i];
 
@@ -397,6 +436,7 @@ found:
         test[i] = 0;
     }
 
+    // initialize ngx_hash_elt_t buckets[]
     for (n = 0; n < nelts; n++) {
         if (names[n].key.data == NULL) {
             continue;
@@ -413,6 +453,7 @@ found:
         test[key] = (u_short) (test[key] + NGX_HASH_ELT_SIZE(&names[n]));
     }
 
+    // set elt->value = NULL if no item's key is i
     for (i = 0; i < size; i++) {
         if (buckets[i] == NULL) {
             continue;
@@ -462,6 +503,9 @@ found:
 }
 
 
+/*
+    initialize wildcard hash_t
+*/
 ngx_int_t
 ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
     ngx_uint_t nelts)
@@ -503,6 +547,7 @@ ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
             }
         }
 
+        // name : ngx_hash_key_t
         name = ngx_array_push(&curr_names);
         if (name == NULL) {
             return NGX_ERROR;
@@ -524,6 +569,8 @@ ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
             len++;
         }
 
+        // next_names , connect with name
+        // insert cannot contain *
         next_names.nelts = 0;
 
         if (names[n].key.len != len) {
@@ -534,7 +581,7 @@ ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
 
             next_name->key.len = names[n].key.len - len;
             next_name->key.data = names[n].key.data + len;
-            next_name->key_hash = 0;
+            next_name->key_hash = 0;            // left string without key_hash
             next_name->value = names[n].value;
 
 #if 0
@@ -544,10 +591,13 @@ ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
         }
 
         for (i = n + 1; i < nelts; i++) {
+            // find the same prefix
             if (ngx_strncmp(names[n].key.data, names[i].key.data, len) != 0) {
                 break;
             }
 
+            // merge items
+            // must be 123.44444 or 123 or 123.
             if (!dot
                 && names[i].key.len > len
                 && names[i].key.data[len] != '.')
@@ -576,6 +626,7 @@ ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
             h = *hinit;
             h.hash = NULL;
 
+            // recurve
             if (ngx_hash_wildcard_init(&h, (ngx_hash_key_t *) next_names.elts,
                                        next_names.nelts)
                 != NGX_OK)
@@ -589,9 +640,12 @@ ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
                 wdc->value = names[n].value;
             }
 
+            // 123.456 123.789
+            // 123456 123456
             name->value = (void *) ((uintptr_t) wdc | (dot ? 3 : 2));
 
         } else if (dot) {
+            // 123.
             name->value = (void *) ((uintptr_t) name->value | 1);
         }
     }
@@ -607,6 +661,9 @@ ngx_hash_wildcard_init(ngx_hash_init_t *hinit, ngx_hash_key_t *names,
 }
 
 
+/*
+    calculator
+*/
 ngx_uint_t
 ngx_hash_key(u_char *data, size_t len)
 {
@@ -614,6 +671,7 @@ ngx_hash_key(u_char *data, size_t len)
 
     key = 0;
 
+    // what if exceed MAX_INT
     for (i = 0; i < len; i++) {
         key = ngx_hash(key, data[i]);
     }
@@ -622,6 +680,9 @@ ngx_hash_key(u_char *data, size_t len)
 }
 
 
+/*
+    calculator with lower char
+*/
 ngx_uint_t
 ngx_hash_key_lc(u_char *data, size_t len)
 {
@@ -637,6 +698,9 @@ ngx_hash_key_lc(u_char *data, size_t len)
 }
 
 
+/*
+    lower and hashkey, really boring.
+*/
 ngx_uint_t
 ngx_hash_strlow(u_char *dst, u_char *src, size_t n)
 {
@@ -655,6 +719,10 @@ ngx_hash_strlow(u_char *dst, u_char *src, size_t n)
 }
 
 
+/*
+    initialize ngx_hash_keys_arrays_t, type means small or large hashsize
+    just allocate memory
+*/
 ngx_int_t
 ngx_hash_keys_array_init(ngx_hash_keys_arrays_t *ha, ngx_uint_t type)
 {
@@ -710,6 +778,9 @@ ngx_hash_keys_array_init(ngx_hash_keys_arrays_t *ha, ngx_uint_t type)
 }
 
 
+/*
+    add key/values in a hash_keys_arrays
+*/
 ngx_int_t
 ngx_hash_add_key(ngx_hash_keys_arrays_t *ha, ngx_str_t *key, void *value,
     ngx_uint_t flags)
@@ -732,6 +803,7 @@ ngx_hash_add_key(ngx_hash_keys_arrays_t *ha, ngx_str_t *key, void *value,
 
         n = 0;
 
+        // if key->data is valid
         for (i = 0; i < key->len; i++) {
 
             if (key->data[i] == '*') {
@@ -749,6 +821,11 @@ ngx_hash_add_key(ngx_hash_keys_arrays_t *ha, ngx_str_t *key, void *value,
             }
         }
 
+        // start with .
+        // skip:
+        // 1: .123 
+        // 2: *.123
+        // 0: 123.*
         if (key->len > 1 && key->data[0] == '.') {
             skip = 1;
             goto wildcard;
@@ -774,6 +851,9 @@ ngx_hash_add_key(ngx_hash_keys_arrays_t *ha, ngx_str_t *key, void *value,
     }
 
     /* exact hash */
+
+    // normal data insert
+    // whitout *
 
     k = 0;
 
@@ -810,6 +890,7 @@ ngx_hash_add_key(ngx_hash_keys_arrays_t *ha, ngx_str_t *key, void *value,
         }
     }
 
+    // keys_hash only save str, no value
     name = ngx_array_push(&ha->keys_hash[k]);
     if (name == NULL) {
         return NGX_ERROR;
@@ -817,6 +898,7 @@ ngx_hash_add_key(ngx_hash_keys_arrays_t *ha, ngx_str_t *key, void *value,
 
     *name = *key;
 
+    // ha->keys save key and value
     hk = ngx_array_push(&ha->keys);
     if (hk == NULL) {
         return NGX_ERROR;
@@ -833,6 +915,7 @@ wildcard:
 
     /* wildcard hash */
 
+    // smart
     k = ngx_hash_strlow(&key->data[skip], &key->data[skip], last - skip);
 
     k %= ha->hsize;
@@ -959,6 +1042,7 @@ wildcard:
         }
     }
 
+    // add keys
     name = ngx_array_push(keys);
     if (name == NULL) {
         return NGX_ERROR;
