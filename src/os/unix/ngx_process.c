@@ -36,6 +36,9 @@ ngx_int_t        ngx_last_process;
 ngx_process_t    ngx_processes[NGX_MAX_PROCESSES];
 
 
+/*
+    all signals we care
+*/
 ngx_signal_t  signals[] = {
     { ngx_signal_value(NGX_RECONFIGURE_SIGNAL),
       "SIG" ngx_value(NGX_RECONFIGURE_SIGNAL),
@@ -280,6 +283,9 @@ ngx_execute_proc(ngx_cycle_t *cycle, void *data)
 }
 
 
+/*
+    register signal handler
+*/
 ngx_int_t
 ngx_init_signals(ngx_log_t *log)
 {
@@ -306,6 +312,9 @@ ngx_init_signals(ngx_log_t *log)
 }
 
 
+/*
+    signal handler
+*/
 void
 ngx_signal_handler(int signo)
 {

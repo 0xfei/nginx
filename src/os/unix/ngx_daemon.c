@@ -9,6 +9,9 @@
 #include <ngx_core.h>
 
 
+/*
+    work as daemon
+*/
 ngx_int_t
 ngx_daemon(ngx_log_t *log)
 {
@@ -23,6 +26,7 @@ ngx_daemon(ngx_log_t *log)
         break;
 
     default:
+        // exit this process
         exit(0);
     }
 

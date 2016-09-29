@@ -336,6 +336,7 @@ main(int argc, char *const *argv)
 
     ngx_cycle = cycle;
 
+    // conf_ctx[module.index]
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
     if (ccf->master && ngx_process == NGX_PROCESS_SINGLE) {
@@ -344,10 +345,12 @@ main(int argc, char *const *argv)
 
 #if !(NGX_WIN32)
 
+    // initialize signal handler
     if (ngx_init_signals(cycle->log) != NGX_OK) {
         return 1;
     }
 
+    // ngx_daemon
     if (!ngx_inherited && ccf->daemon) {
         if (ngx_daemon(cycle->log) != NGX_OK) {
             return 1;
@@ -366,6 +369,7 @@ main(int argc, char *const *argv)
         return 1;
     }
 
+    // dup2(fd, STDERR_FILENO)
     if (ngx_log_redirect_stderr(cycle) != NGX_OK) {
         return 1;
     }
