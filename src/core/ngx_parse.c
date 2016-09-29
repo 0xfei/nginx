@@ -8,7 +8,10 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 
-
+/*
+    return k K M m size
+    maxnumber is 2^64-1
+*/
 ssize_t
 ngx_parse_size(ngx_str_t *line)
 {
@@ -50,6 +53,9 @@ ngx_parse_size(ngx_str_t *line)
 }
 
 
+/*
+    accually the same as ngx_parse_size except G g support
+*/
 off_t
 ngx_parse_offset(ngx_str_t *line)
 {
@@ -98,6 +104,9 @@ ngx_parse_offset(ngx_str_t *line)
 }
 
 
+/*
+    parse ngx_str_t to seconds or mseconds
+*/
 ngx_int_t
 ngx_parse_time(ngx_str_t *line, ngx_uint_t is_sec)
 {
@@ -143,6 +152,7 @@ ngx_parse_time(ngx_str_t *line, ngx_uint_t is_sec)
         switch (*p++) {
 
         case 'y':
+            // step must be st_start
             if (step > st_start) {
                 return NGX_ERROR;
             }
@@ -188,6 +198,7 @@ ngx_parse_time(ngx_str_t *line, ngx_uint_t is_sec)
             break;
 
         case 'm':
+            // ms
             if (p < last && *p == 's') {
                 if (is_sec || step >= st_msec) {
                     return NGX_ERROR;

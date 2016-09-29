@@ -59,6 +59,9 @@ static char  *week[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
 static char  *months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
 
+/*
+    initialze extern time.len and ngx_time_update
+*/
 void
 ngx_time_init(void)
 {
@@ -74,6 +77,9 @@ ngx_time_init(void)
 }
 
 
+/*
+    update
+*/
 void
 ngx_time_update(void)
 {
@@ -109,6 +115,7 @@ ngx_time_update(void)
         slot++;
     }
 
+    // inc slot
     tp = &cached_time[slot];
 
     tp->sec = sec;
@@ -124,6 +131,7 @@ ngx_time_update(void)
                        months[gmt.ngx_tm_mon - 1], gmt.ngx_tm_year,
                        gmt.ngx_tm_hour, gmt.ngx_tm_min, gmt.ngx_tm_sec);
 
+    // set timezone
 #if (NGX_HAVE_GETTIMEZONE)
 
     tp->gmtoff = ngx_gettimezone();
@@ -190,7 +198,9 @@ ngx_time_update(void)
 
 
 #if !(NGX_WIN32)
-
+/*
+    second level and nothing about timezone
+*/
 void
 ngx_time_sigsafe_update(void)
 {
@@ -215,6 +225,7 @@ ngx_time_sigsafe_update(void)
         return;
     }
 
+    // slot changed. how about the other time cache??
     if (slot == NGX_TIME_SLOTS - 1) {
         slot = 0;
     } else {
@@ -296,6 +307,10 @@ ngx_http_cookie_time(u_char *buf, time_t t)
 }
 
 
+/*
+    initialize ngx_tm_t struct
+    excellent
+*/
 void
 ngx_gmtime(time_t t, ngx_tm_t *tp)
 {
@@ -389,12 +404,17 @@ ngx_gmtime(time_t t, ngx_tm_t *tp)
 }
 
 
+/*
+    when > now, return when
+    else return next day's when
+*/
 time_t
 ngx_next_time(time_t when)
 {
     time_t     now, next;
     struct tm  tm;
 
+    // get cache time
     now = ngx_time();
 
     ngx_libc_localtime(now, &tm);

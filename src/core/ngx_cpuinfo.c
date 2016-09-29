@@ -45,7 +45,7 @@ ngx_cpuid(uint32_t i, uint32_t *buf)
 
 #else /* __amd64__ */
 
-
+// cpuid
 static ngx_inline void
 ngx_cpuid(uint32_t i, uint32_t *buf)
 {

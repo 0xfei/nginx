@@ -12,7 +12,7 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 
-
+// http time paser
 time_t ngx_parse_http_time(u_char *value, size_t len);
 
 /* compatibility */

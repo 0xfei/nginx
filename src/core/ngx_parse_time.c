@@ -11,6 +11,7 @@
 
 static ngx_uint_t  mday[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
+// parse http time only
 time_t
 ngx_parse_http_time(u_char *value, size_t len)
 {
@@ -79,6 +80,7 @@ ngx_parse_http_time(u_char *value, size_t len)
 
     switch (*p) {
 
+    // January June July
     case 'J':
         month = *(p + 1) == 'a' ? 0 : *(p + 2) == 'n' ? 5 : 6;
         break;
