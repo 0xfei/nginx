@@ -32,6 +32,8 @@ ngx_rwlock_wlock(ngx_atomic_t *lock)
             for (n = 1; n < NGX_RWLOCK_SPIN; n <<= 1) {
 
                 for (i = 0; i < n; i++) {
+                    // asm pause
+                    // this loop can pause all cpus
                     ngx_cpu_pause();
                 }
 
@@ -43,11 +45,15 @@ ngx_rwlock_wlock(ngx_atomic_t *lock)
             }
         }
 
+        // yield
         ngx_sched_yield();
     }
 }
 
 
+/*
+    loop until NGX_RWLOCK_WLOCK owner release this lock
+*/
 void
 ngx_rwlock_rlock(ngx_atomic_t *lock)
 {
@@ -104,6 +110,7 @@ ngx_rwlock_unlock(ngx_atomic_t *lock)
             return;
         }
 
+        // important!
         readers = *lock;
     }
 }

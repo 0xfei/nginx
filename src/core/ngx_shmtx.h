@@ -12,7 +12,9 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 
-
+/*
+    mutex for synchronize
+*/
 typedef struct {
     ngx_atomic_t   lock;
 #if (NGX_HAVE_POSIX_SEM)
@@ -24,16 +26,16 @@ typedef struct {
 typedef struct {
 #if (NGX_HAVE_ATOMIC_OPS)
     ngx_atomic_t  *lock;
-#if (NGX_HAVE_POSIX_SEM)
+#if (NGX_HAVE_POSIX_SEM)    // not very smart
     ngx_atomic_t  *wait;
-    ngx_uint_t     semaphore;
+    ngx_uint_t     semaphore; // sem support
     sem_t          sem;
 #endif
 #else
     ngx_fd_t       fd;
-    u_char        *name;
+    u_char        *name; // file mutex atomic not support
 #endif
-    ngx_uint_t     spin;
+    ngx_uint_t     spin; //
 } ngx_shmtx_t;
 
 

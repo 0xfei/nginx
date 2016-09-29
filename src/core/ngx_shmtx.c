@@ -14,7 +14,15 @@
 
 static void ngx_shmtx_wakeup(ngx_shmtx_t *mtx);
 
+/*
+    wait is strange!!!
+*/
 
+/*
+    ATOMIC SUPPORT VERSION
+    use addr->lock addr->wait
+    sem_init
+*/
 ngx_int_t
 ngx_shmtx_create(ngx_shmtx_t *mtx, ngx_shmtx_sh_t *addr, u_char *name)
 {
@@ -23,7 +31,7 @@ ngx_shmtx_create(ngx_shmtx_t *mtx, ngx_shmtx_sh_t *addr, u_char *name)
     if (mtx->spin == (ngx_uint_t) -1) {
         return NGX_OK;
     }
-
+    // spin time in ncpus
     mtx->spin = 2048;
 
 #if (NGX_HAVE_POSIX_SEM)
@@ -43,6 +51,9 @@ ngx_shmtx_create(ngx_shmtx_t *mtx, ngx_shmtx_sh_t *addr, u_char *name)
 }
 
 
+/*
+    sem_destroy
+*/
 void
 ngx_shmtx_destroy(ngx_shmtx_t *mtx)
 {
@@ -96,8 +107,9 @@ ngx_shmtx_lock(ngx_shmtx_t *mtx)
         }
 
 #if (NGX_HAVE_POSIX_SEM)
-
+        // just used after loop test
         if (mtx->semaphore) {
+            // wait means wait times
             (void) ngx_atomic_fetch_add(mtx->wait, 1);
 
             if (*mtx->lock == 0 && ngx_atomic_cmp_set(mtx->lock, 0, ngx_pid)) {
@@ -113,6 +125,7 @@ ngx_shmtx_lock(ngx_shmtx_t *mtx)
 
                 err = ngx_errno;
 
+                // inteerupt by signal handler
                 if (err != NGX_EINTR) {
                     ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, err,
                                   "sem_wait() failed while waiting on shmtx");
@@ -146,6 +159,7 @@ ngx_shmtx_unlock(ngx_shmtx_t *mtx)
 }
 
 
+// unlock from pid
 ngx_uint_t
 ngx_shmtx_force_unlock(ngx_shmtx_t *mtx, ngx_pid_t pid)
 {
@@ -161,6 +175,9 @@ ngx_shmtx_force_unlock(ngx_shmtx_t *mtx, ngx_pid_t pid)
 }
 
 
+/*
+    sem_post
+*/
 static void
 ngx_shmtx_wakeup(ngx_shmtx_t *mtx)
 {
@@ -179,6 +196,7 @@ ngx_shmtx_wakeup(ngx_shmtx_t *mtx)
             return;
         }
 
+        // wait must be zero
         if (ngx_atomic_cmp_set(mtx->wait, wait, wait - 1)) {
             break;
         }
@@ -196,6 +214,9 @@ ngx_shmtx_wakeup(ngx_shmtx_t *mtx)
 }
 
 
+/*
+    ATOMIC NOT SUPPORT
+*/
 #else
 
 
@@ -247,6 +268,7 @@ ngx_shmtx_trylock(ngx_shmtx_t *mtx)
 {
     ngx_err_t  err;
 
+    // fcntl F_SETLK
     err = ngx_trylock_fd(mtx->fd);
 
     if (err == 0) {
