@@ -96,15 +96,15 @@ typedef struct {
     ngx_uint_t                cpu_affinity_n;
     ngx_cpuset_t             *cpu_affinity;
 
-    char                     *username;
-    ngx_uid_t                 user;
-    ngx_gid_t                 group;
+    char                     *username;             // username
+    ngx_uid_t                 user;                 // user-id
+    ngx_gid_t                 group;                // group-id
 
     ngx_str_t                 working_directory;
     ngx_str_t                 lock_file;
 
     ngx_str_t                 pid;
-    ngx_str_t                 oldpid;
+    ngx_str_t                 oldpid;               // pid.oldbin
 
     ngx_array_t               env;
     char                    **environment;

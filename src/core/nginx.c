@@ -999,7 +999,7 @@ ngx_process_options(ngx_cycle_t *cycle)
     return NGX_OK;
 }
 
-
+/* create conf for ngx_core_module */
 static void *
 ngx_core_module_create_conf(ngx_cycle_t *cycle)
 {
@@ -1043,7 +1043,7 @@ ngx_core_module_create_conf(ngx_cycle_t *cycle)
     return ccf;
 }
 
-
+/* init config info */
 static char *
 ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 {
@@ -1079,26 +1079,26 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
     if (ngx_conf_full_name(cycle, &ccf->pid, 0) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
-
+    /* .oldbin */
     ccf->oldpid.len = ccf->pid.len + sizeof(NGX_OLDPID_EXT);
 
     ccf->oldpid.data = ngx_pnalloc(cycle->pool, ccf->oldpid.len);
     if (ccf->oldpid.data == NULL) {
         return NGX_CONF_ERROR;
     }
-
+    /* copy pid.data to oldpid.data and concat with .oldbin */
     ngx_memcpy(ngx_cpymem(ccf->oldpid.data, ccf->pid.data, ccf->pid.len),
                NGX_OLDPID_EXT, sizeof(NGX_OLDPID_EXT));
 
 
 #if !(NGX_WIN32)
 
-    if (ccf->user == (uid_t) NGX_CONF_UNSET_UINT && geteuid() == 0) {
+    if (ccf->user == (uid_t) NGX_CONF_UNSET_UINT && geteuid() == 0) { /* root */
         struct group   *grp;
         struct passwd  *pwd;
 
         ngx_set_errno(0);
-        pwd = getpwnam(NGX_USER);
+        pwd = getpwnam(NGX_USER);   /* get passwd of nobody */
         if (pwd == NULL) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                           "getpwnam(\"" NGX_USER "\") failed");
@@ -1132,7 +1132,7 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_str_t  lock_file;
 
     lock_file = cycle->old_cycle->lock_file;
-
+    /* locfile could not be changed */
     if (lock_file.len) {
         lock_file.len--;
 
@@ -1173,7 +1173,7 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 
 
 static char *
-ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)    /* set user or use current user */
 {
 #if (NGX_WIN32)
 
@@ -1487,7 +1487,7 @@ ngx_set_worker_processes(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 static char *
-ngx_load_module(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+ngx_load_module(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) /* load module command */
 {
 #if (NGX_HAVE_DLOPEN)
     void                *handle;
