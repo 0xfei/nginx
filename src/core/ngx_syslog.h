@@ -8,13 +8,13 @@
 #define _NGX_SYSLOG_H_INCLUDED_
 
 
-typedef struct {
+typedef struct {    /* log peer to write , syslog info */
     ngx_pool_t       *pool;
     ngx_uint_t        facility;
     ngx_uint_t        severity;
     ngx_str_t         tag;
 
-    ngx_addr_t        server;
+    ngx_addr_t        server; /* */
     ngx_connection_t  conn;
     unsigned          busy:1;
     unsigned          nohostname:1;
