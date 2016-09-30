@@ -12,33 +12,33 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 
-
+// page item in pool
 typedef struct ngx_slab_page_s  ngx_slab_page_t;
 
 struct ngx_slab_page_s {
-    uintptr_t         slab;
-    ngx_slab_page_t  *next;
-    uintptr_t         prev;
+    uintptr_t         slab; // items of ngx_slab_page_t
+    ngx_slab_page_t  *next; // queue list
+    uintptr_t         prev; // prev
 };
 
-
+// slab pool
 typedef struct {
     ngx_shmtx_sh_t    lock;
 
     size_t            min_size;
     size_t            min_shift;
 
-    ngx_slab_page_t  *pages;
-    ngx_slab_page_t  *last;
-    ngx_slab_page_t   free;
+    ngx_slab_page_t  *pages; // slab start
+    ngx_slab_page_t  *last;  // last slab
+    ngx_slab_page_t   free;  // unused slab
 
-    u_char           *start;
-    u_char           *end;
+    u_char           *start; // data start, with page-size ngx_slab_page_t
+    u_char           *end;   // data end, may have junk
 
     ngx_shmtx_t       mutex;
 
-    u_char           *log_ctx;
-    u_char            zero;
+    u_char           *log_ctx; // log message str
+    u_char            zero;    // zero str
 
     unsigned          log_nomem:1;
 
