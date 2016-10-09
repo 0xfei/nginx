@@ -19,7 +19,7 @@ static ngx_command_t  ngx_conf_commands[] = {
 
     { ngx_string("include"),
       NGX_ANY_CONF|NGX_CONF_TAKE1,
-      ngx_conf_include,
+      ngx_conf_include, /* when include shows, ngx_conf_include called */
       0,
       0,
       NULL },
@@ -59,7 +59,7 @@ static ngx_uint_t argument_number[] = {
 
 
 char *
-ngx_conf_param(ngx_conf_t *cf)
+ngx_conf_param(ngx_conf_t *cf)  /* deal with conf param */
 {
     char             *rv;
     ngx_str_t        *param;
@@ -98,7 +98,7 @@ ngx_conf_param(ngx_conf_t *cf)
 
 
 char *
-ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
+ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename) /* conf parser */
 {
     char             *rv;
     u_char           *p;
@@ -316,6 +316,9 @@ done:
 }
 
 
+/*
+    call command, module cared 
+*/
 static ngx_int_t
 ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
 {
@@ -347,7 +350,7 @@ ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
             }
 
             found = 1;
-
+            // type check
             if (cf->cycle->modules[i]->type != NGX_CONF_MODULE
                 && cf->cycle->modules[i]->type != cf->module_type)
             {
@@ -463,6 +466,9 @@ invalid:
 }
 
 
+/*
+    find token , save data to cf->args
+*/
 static ngx_int_t
 ngx_conf_read_token(ngx_conf_t *cf)
 {
@@ -495,7 +501,7 @@ ngx_conf_read_token(ngx_conf_t *cf)
     for ( ;; ) {
 
         if (b->pos >= b->last) {
-
+            /* file parsed */
             if (cf->conf_file->file.offset >= file_size) {
 
                 if (cf->args->nelts > 0 || !last_space) {
@@ -517,7 +523,7 @@ ngx_conf_read_token(ngx_conf_t *cf)
             }
 
             len = b->pos - start;
-
+            /* buffer used */
             if (len == NGX_CONF_BUFFER) {
                 cf->conf_file->line = start_line;
 

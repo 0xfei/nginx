@@ -26,7 +26,7 @@ typedef struct ngx_shm_zone_s  ngx_shm_zone_t;
 
 typedef ngx_int_t (*ngx_shm_zone_init_pt) (ngx_shm_zone_t *zone, void *data);
 
-struct ngx_shm_zone_s {
+struct ngx_shm_zone_s { /* shared memory */
     void                     *data;
     ngx_shm_t                 shm;
     ngx_shm_zone_init_pt      init;
@@ -36,39 +36,39 @@ struct ngx_shm_zone_s {
 
 
 struct ngx_cycle_s {
-    void                  ****conf_ctx;
+    void                  ****conf_ctx; /* conf saved here */
     ngx_pool_t               *pool;
 
     ngx_log_t                *log;
     ngx_log_t                 new_log;
 
     ngx_uint_t                log_use_stderr;  /* unsigned  log_use_stderr:1; */
-
+    /* pre opened files and freed connections */
     ngx_connection_t        **files;
     ngx_connection_t         *free_connections;
     ngx_uint_t                free_connection_n;
-
+    /* modules related */
     ngx_module_t            **modules;
     ngx_uint_t                modules_n;
     ngx_uint_t                modules_used;    /* unsigned  modules_used:1; */
-
+    /* reusable connections */
     ngx_queue_t               reusable_connections_queue;
-
+    /* listening array */
     ngx_array_t               listening;
     ngx_array_t               paths;
     ngx_array_t               config_dump;
     ngx_list_t                open_files;
     ngx_list_t                shared_memory;
-
+    /* numbers */
     ngx_uint_t                connection_n;
     ngx_uint_t                files_n;
-
+    /* commections pool and its related read/write event */
     ngx_connection_t         *connections;
     ngx_event_t              *read_events;
     ngx_event_t              *write_events;
-
+    /* old_cycle , means temp */
     ngx_cycle_t              *old_cycle;
-
+    /* path related */
     ngx_str_t                 conf_file;
     ngx_str_t                 conf_param;
     ngx_str_t                 conf_prefix;
@@ -108,7 +108,7 @@ typedef struct {
 
     ngx_array_t               env;
     char                    **environment;
-} ngx_core_conf_t;
+} ngx_core_conf_t;  /* core cared conf */
 
 
 #define ngx_is_init_cycle(cycle)  (cycle->conf_ctx == NULL)
