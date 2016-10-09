@@ -23,7 +23,7 @@ static ngx_uint_t  ngx_modules_n;
 
 
 ngx_int_t
-ngx_preinit_modules(void)
+ngx_preinit_modules(void)   /* initialise ngx_modules and ngx_max_module */
 {
     ngx_uint_t  i;
 
@@ -40,7 +40,7 @@ ngx_preinit_modules(void)
 
 
 ngx_int_t
-ngx_cycle_modules(ngx_cycle_t *cycle)
+ngx_cycle_modules(ngx_cycle_t *cycle)   /* copy ngx_modules to cycle->modules , need pool alloc */
 {
     /*
      * create a list of modules to be used for this cycle,
@@ -63,7 +63,7 @@ ngx_cycle_modules(ngx_cycle_t *cycle)
 
 
 ngx_int_t
-ngx_init_modules(ngx_cycle_t *cycle)
+ngx_init_modules(ngx_cycle_t *cycle)    /* call modules->init_module */
 {
     ngx_uint_t  i;
 
@@ -80,7 +80,7 @@ ngx_init_modules(ngx_cycle_t *cycle)
 
 
 ngx_int_t
-ngx_count_modules(ngx_cycle_t *cycle, ngx_uint_t type)
+ngx_count_modules(ngx_cycle_t *cycle, ngx_uint_t type)  /* return max number of index which been used + 1*/
 {
     ngx_uint_t     i, next, max;
     ngx_module_t  *module;
@@ -174,7 +174,7 @@ ngx_add_module(ngx_conf_t *cf, ngx_str_t *file, ngx_module_t *module,
         return NGX_ERROR;
     }
 
-    if (ngx_strcmp(module->signature, NGX_MODULE_SIGNATURE) != 0) {
+    if (ngx_strcmp(module->signature, NGX_MODULE_SIGNATURE) != 0) { /* ngx_signature */
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "module \"%V\" is not binary compatible",
                            file);
@@ -212,7 +212,7 @@ ngx_add_module(ngx_conf_t *cf, ngx_str_t *file, ngx_module_t *module,
 
     if (order) {
         for (i = 0; order[i]; i++) {
-            if (ngx_strcmp(order[i], module->name) == 0) {
+            if (ngx_strcmp(order[i], module->name) == 0) {  /* find the index of this module in order */
                 i++;
                 break;
             }
@@ -268,7 +268,7 @@ ngx_add_module(ngx_conf_t *cf, ngx_str_t *file, ngx_module_t *module,
                 return NGX_ERROR;
             }
 
-            cf->cycle->conf_ctx[module->index] = rv;
+            cf->cycle->conf_ctx[module->index] = rv;    /* cycle->conf_ctx[module->index] saves the config struct */
         }
     }
 
@@ -277,7 +277,7 @@ ngx_add_module(ngx_conf_t *cf, ngx_str_t *file, ngx_module_t *module,
 
 
 static ngx_uint_t
-ngx_module_index(ngx_cycle_t *cycle)
+ngx_module_index(ngx_cycle_t *cycle)    /* return unused index */
 {
     ngx_uint_t     i, index;
     ngx_module_t  *module;
@@ -316,7 +316,7 @@ again:
 
 
 static ngx_uint_t
-ngx_module_ctx_index(ngx_cycle_t *cycle, ngx_uint_t type, ngx_uint_t index)
+ngx_module_ctx_index(ngx_cycle_t *cycle, ngx_uint_t type, ngx_uint_t index) /* return unused index type */
 {
     ngx_uint_t     i;
     ngx_module_t  *module;

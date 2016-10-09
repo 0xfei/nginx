@@ -235,24 +235,24 @@
 
 
 struct ngx_module_s {
-    ngx_uint_t            ctx_index;
-    ngx_uint_t            index;
+    ngx_uint_t            ctx_index;    /* index of type */
+    ngx_uint_t            index;        /* index of all */
 
-    char                 *name;
+    char                 *name;         /* module name */
 
     ngx_uint_t            spare0;
     ngx_uint_t            spare1;
 
-    ngx_uint_t            version;
-    const char           *signature;
+    ngx_uint_t            version;      /* version */
+    const char           *signature;    /* ssignature */
 
-    void                 *ctx;
-    ngx_command_t        *commands;
-    ngx_uint_t            type;
+    void                 *ctx;          /* data of specific module */
+    ngx_command_t        *commands;     /* config parse command */
+    ngx_uint_t            type;         /* module type */
 
-    ngx_int_t           (*init_master)(ngx_log_t *log);
+    ngx_int_t           (*init_master)(ngx_log_t *log);     /* master start */
 
-    ngx_int_t           (*init_module)(ngx_cycle_t *cycle);
+    ngx_int_t           (*init_module)(ngx_cycle_t *cycle); /* module init */
 
     ngx_int_t           (*init_process)(ngx_cycle_t *cycle);
     ngx_int_t           (*init_thread)(ngx_cycle_t *cycle);
@@ -276,7 +276,7 @@ typedef struct {
     ngx_str_t             name;
     void               *(*create_conf)(ngx_cycle_t *cycle);
     char               *(*init_conf)(ngx_cycle_t *cycle, void *conf);
-} ngx_core_module_t;
+} ngx_core_module_t;    /* Core module struct */
 
 
 ngx_int_t ngx_preinit_modules(void);
