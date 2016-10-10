@@ -45,7 +45,7 @@ typedef volatile ngx_atomic_uint_t  ngx_atomic_t;
  * optimized at run-time for UP and SMP
  */
 
-//#include <libkern/OSAtomic.h>
+#include <libkern/OSAtomic.h>
 
 /* "bool" conflicts with perl's CORE/handy.h */
 #if 0
