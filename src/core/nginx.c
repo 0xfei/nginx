@@ -474,7 +474,7 @@ ngx_add_inherited_sockets(ngx_cycle_t *cycle)
                   "using inherited sockets from \"%s\"", inherited);
 
     // initialize listeing as 10 array items
-    if (ngx_array_init(&cycle->listening, cycle->poreol, 10,
+    if (ngx_array_init(&cycle->listening, cycle->pool, 10,
                        sizeof(ngx_listening_t))
         != NGX_OK)
     {
