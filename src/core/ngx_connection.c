@@ -16,6 +16,9 @@ ngx_os_io_t  ngx_io;
 static void ngx_drain_connections(void);
 
 
+/*
+    cycle->listening
+*/
 ngx_listening_t *
 ngx_create_listening(ngx_conf_t *cf, struct sockaddr *sockaddr,
     socklen_t socklen)
@@ -25,6 +28,7 @@ ngx_create_listening(ngx_conf_t *cf, struct sockaddr *sockaddr,
     struct sockaddr  *sa;
     u_char            text[NGX_SOCKADDR_STRLEN];
 
+    /* get ngx_listening_t from cycle->listening */
     ls = ngx_array_push(&cf->cycle->listening);
     if (ls == NULL) {
         return NULL;
@@ -91,6 +95,9 @@ ngx_create_listening(ngx_conf_t *cf, struct sockaddr *sockaddr,
 }
 
 
+/*
+    when NGX_HAVE_REUSEPORT, this call clone a socket for each worker process
+*/
 ngx_int_t
 ngx_clone_listening(ngx_conf_t *cf, ngx_listening_t *ls)
 {
@@ -128,6 +135,9 @@ ngx_clone_listening(ngx_conf_t *cf, ngx_listening_t *ls)
 }
 
 
+/*
+    just re-initialize cycle->listening, here we can see important SOCKET options
+*/
 ngx_int_t
 ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 {
@@ -157,7 +167,7 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
         }
 
         ls[i].socklen = sizeof(ngx_sockaddr_t);
-        if (getsockname(ls[i].fd, ls[i].sockaddr, &ls[i].socklen) == -1) {
+        if (getsockname(ls[i].fd, ls[i].sockaddr, &ls[i].socklen) == -1) {  /* getsockname return addr of socket fd */
             ngx_log_error(NGX_LOG_CRIT, cycle->log, ngx_socket_errno,
                           "getsockname() of the inherited "
                           "socket #%d failed", ls[i].fd);
@@ -377,6 +387,9 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 }
 
 
+/*
+    just call bind and listen on each cycle->listening
+*/
 ngx_int_t
 ngx_open_listening_sockets(ngx_cycle_t *cycle)
 {
@@ -646,6 +659,9 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
 }
 
 
+/*
+    continue config cycle->listening
+*/
 void
 ngx_configure_listening_sockets(ngx_cycle_t *cycle)
 {
@@ -661,7 +677,7 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
     for (i = 0; i < cycle->listening.nelts; i++) {
 
         ls[i].log = *ls[i].logp;
-
+        /* set SO_RCVBUF */
         if (ls[i].rcvbuf != -1) {
             if (setsockopt(ls[i].fd, SOL_SOCKET, SO_RCVBUF,
                            (const void *) &ls[i].rcvbuf, sizeof(int))
@@ -954,6 +970,9 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
 }
 
 
+/*
+    delete event when connection_t exists
+*/
 void
 ngx_close_listening_sockets(ngx_cycle_t *cycle)
 {
@@ -1026,6 +1045,9 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
 }
 
 
+/*
+    means build connection
+*/
 ngx_connection_t *
 ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
 {
@@ -1058,7 +1080,7 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
         return NULL;
     }
 
-    ngx_cycle->free_connections = c->data;
+    ngx_cycle->free_connections = c->data; /* means c->next */
     ngx_cycle->free_connection_n--;
 
     if (ngx_cycle->files && ngx_cycle->files[s] == NULL) {
@@ -1080,7 +1102,7 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
     ngx_memzero(rev, sizeof(ngx_event_t));
     ngx_memzero(wev, sizeof(ngx_event_t));
 
-    rev->instance = !instance;
+    rev->instance = !instance; // great
     wev->instance = !instance;
 
     rev->index = NGX_INVALID_INDEX;
@@ -1101,7 +1123,7 @@ ngx_free_connection(ngx_connection_t *c)
     c->data = ngx_cycle->free_connections;
     ngx_cycle->free_connections = c;
     ngx_cycle->free_connection_n++;
-
+    /* here, intresting */
     if (ngx_cycle->files && ngx_cycle->files[c->fd] == c) {
         ngx_cycle->files[c->fd] = NULL;
     }
@@ -1199,6 +1221,9 @@ ngx_close_connection(ngx_connection_t *c)
 }
 
 
+/*
+    insert to reusable queue
+*/
 void
 ngx_reusable_connection(ngx_connection_t *c, ngx_uint_t reusable)
 {
@@ -1228,6 +1253,9 @@ ngx_reusable_connection(ngx_connection_t *c, ngx_uint_t reusable)
 }
 
 
+/*
+    drain connections from cycle->reusable_connections_queue
+*/
 static void
 ngx_drain_connections(void)
 {
@@ -1272,6 +1300,9 @@ ngx_close_idle_connections(ngx_cycle_t *cycle)
 }
 
 
+/*
+    ntop with c.local_sockaddr
+*/
 ngx_int_t
 ngx_connection_local_sockaddr(ngx_connection_t *c, ngx_str_t *s,
     ngx_uint_t port)
