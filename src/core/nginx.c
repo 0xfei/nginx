@@ -102,6 +102,7 @@ static ngx_command_t  ngx_core_commands[] = {
       0,
       NULL },
 
+    /* cpu affinity of every worker process */
     { ngx_string("worker_cpu_affinity"),
       NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_1MORE,
       ngx_set_cpu_affinity,
@@ -193,20 +194,20 @@ main(int argc, char *const *argv)
     ngx_conf_dump_t  *cd;
     ngx_core_conf_t  *ccf;
 
-    // for malloc, when debug, the heap address will padding differently
+    /* set MALLOC_OPTIONS on freebsd, MallocScribble on MacOS, and ngx_debug_malloc = 1 */
     ngx_debug_init();
 
-    // write strerror into ngx_sys_errlist
+    /* write strerror(i) into ngx_sys_errlist[i] */
     if (ngx_strerror_init() != NGX_OK) {
         return 1;
     }
 
-    // dealwith options
+    /* dealwith options */
     if (ngx_get_options(argc, argv) != NGX_OK) {
         return 1;
     }
 
-    // ngx -v -V -t -T
+    /* options: -v -V -t -T */
     if (ngx_show_version) {
         ngx_show_version_info();
 
@@ -217,19 +218,18 @@ main(int argc, char *const *argv)
 
     /* TODO */ ngx_max_sockets = -1;
 
-    // ngx time init
+    /* ngx global time related variables initialize, and call ngx_time_update */
     ngx_time_init();
 
 #if (NGX_PCRE)
-    // set pcre function for alloc and free memory
+    /* pcre_malloc and pcre_free */
     ngx_regex_init();
 #endif
 
-    // getpid()
+    /* getpid() */
     ngx_pid = ngx_getpid();
 
-    // log??? so how did we log error before?
-    // write to stderror by write system call
+    /* initialize ngx_log_module's static ngx_log_t , and get it's address */
     log = ngx_log_init(ngx_prefix);
     if (log == NULL) {
         return 1;
@@ -237,7 +237,7 @@ main(int argc, char *const *argv)
 
     /* STUB */
 #if (NGX_OPENSSL)
-    // this is about event
+    /* ssl init */
     ngx_ssl_init(log);
 #endif
 
@@ -259,7 +259,7 @@ main(int argc, char *const *argv)
         return 1;
     }
 
-    // actually, this is about conf file
+    /* actually, this is about config file parameters */
     if (ngx_process_options(&init_cycle) != NGX_OK) {
         return 1;
     }
@@ -272,23 +272,27 @@ main(int argc, char *const *argv)
      * ngx_crc32_table_init() requires ngx_cacheline_size set in ngx_os_init()
      */
 
-    // alloc memory and initialize crc32 table
+    /* alloc memory and initialize crc32 table */
     if (ngx_crc32_table_init() != NGX_OK) {
         return 1;
     }
 
-    // add NGINX_VAR environ
+    /* add NGINX_VAR environ */
     if (ngx_add_inherited_sockets(&init_cycle) != NGX_OK) {
         return 1;
     }
 
-    // init order of preinit modules 
+    /* initialize order of preinit modules with ngx_module_names */ 
     if (ngx_preinit_modules() != NGX_OK) {
         return 1;
     }
 
-    // init the most kernel struct init_cycle
-    // need to analyse the other day
+    /* init the most important struct init_cycle
+       main work:
+       1.
+       2.
+       3. 
+      */
     cycle = ngx_init_cycle(&init_cycle);
     if (cycle == NULL) {
         if (ngx_test_config) {
@@ -457,6 +461,9 @@ ngx_show_version_info(void)
 }
 
 
+/*
+    initialize cycle->listening and set NGINX_VAR(fd sets) to it
+*/
 static ngx_int_t
 ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 {
@@ -473,8 +480,8 @@ ngx_add_inherited_sockets(ngx_cycle_t *cycle)
     ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
                   "using inherited sockets from \"%s\"", inherited);
 
-    // initialize listeing as 10 array items
-    if (ngx_array_init(&cycle->listening, cycle->poreol, 10,
+    // initialize listeing
+    if (ngx_array_init(&cycle->listening, cycle->pool, 10,
                        sizeof(ngx_listening_t))
         != NGX_OK)
     {
@@ -999,7 +1006,9 @@ ngx_process_options(ngx_cycle_t *cycle)
     return NGX_OK;
 }
 
-/* create conf for ngx_core_module */
+/*
+    create ngx_core_conf_t for ngx_core_modul 
+*/
 static void *
 ngx_core_module_create_conf(ngx_cycle_t *cycle)
 {
@@ -1034,6 +1043,7 @@ ngx_core_module_create_conf(ngx_cycle_t *cycle)
     ccf->user = (ngx_uid_t) NGX_CONF_UNSET_UINT;
     ccf->group = (ngx_gid_t) NGX_CONF_UNSET_UINT;
 
+    /* env just has i item */
     if (ngx_array_init(&ccf->env, cycle->pool, 1, sizeof(ngx_str_t))
         != NGX_OK)
     {
@@ -1043,12 +1053,16 @@ ngx_core_module_create_conf(ngx_cycle_t *cycle)
     return ccf;
 }
 
-/* init config info */
+
+/*
+    called after config parsed
+*/
 static char *
 ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_core_conf_t  *ccf = conf;
 
+    /* all have default value */
     ngx_conf_init_value(ccf->daemon, 1);
     ngx_conf_init_value(ccf->master, 1);
     ngx_conf_init_msec_value(ccf->timer_resolution, 0);
@@ -1076,9 +1090,11 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
         ngx_str_set(&ccf->pid, NGX_PID_PATH);
     }
 
+    /* complete ccf->pid path */
     if (ngx_conf_full_name(cycle, &ccf->pid, 0) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
+
     /* .oldbin */
     ccf->oldpid.len = ccf->pid.len + sizeof(NGX_OLDPID_EXT);
 
@@ -1092,7 +1108,7 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 
 
 #if !(NGX_WIN32)
-
+    /* default to be nobody */
     if (ccf->user == (uid_t) NGX_CONF_UNSET_UINT && geteuid() == 0) { /* root */
         struct group   *grp;
         struct passwd  *pwd;
@@ -1132,7 +1148,9 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_str_t  lock_file;
 
     lock_file = cycle->old_cycle->lock_file;
-    /* locfile could not be changed */
+
+    /* lockfile could not be changed 
+     lockfile end with .accept */
     if (lock_file.len) {
         lock_file.len--;
 
@@ -1172,8 +1190,12 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 }
 
 
+/*
+    user config dealer
+    set ngx_core_conf_t->user ->group ids
+*/
 static char *
-ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)    /* set user or use current user */
+ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
 #if (NGX_WIN32)
 
@@ -1195,6 +1217,7 @@ ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)    /* set user or u
         return "is duplicate";
     }
 
+    /* master runs with root, user config can work */
     if (geteuid() != 0) {
         ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                            "the \"user\" directive makes sense only "
@@ -1235,6 +1258,9 @@ ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)    /* set user or u
 }
 
 
+/*
+    what if config has no '=' ??
+*/
 static char *
 ngx_set_env(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -1265,6 +1291,9 @@ ngx_set_env(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+/*
+    ngx_core_conf_t->priority, just set value directly, means related priority
+*/
 static char *
 ngx_set_priority(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -1305,6 +1334,12 @@ ngx_set_priority(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+/*
+    ngx_core_conf_t->cpu_affinity
+    it is a ngx_cpuset_t arrays with cpu_affinity_n size
+    cpu_affinity_auto means cpu_affinity[0] is 0xFF
+    the value of config is a little foolish must be str and 010001 this like 
+*/
 static char *
 ngx_set_cpu_affinity(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -1324,7 +1359,7 @@ ngx_set_cpu_affinity(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (mask == NULL) {
         return NGX_CONF_ERROR;
     }
-
+    /* when auto , nelts = 3, cpu_affinity_n = 2 */
     ccf->cpu_affinity_n = cf->args->nelts - 1;
     ccf->cpu_affinity = mask;
 
@@ -1403,6 +1438,11 @@ ngx_set_cpu_affinity(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+/*
+    get ngx_cpu_set_t of worker #n
+    if cpu_affinity_auto, then return cpu not affinitied
+    see this when called!!!
+*/
 ngx_cpuset_t *
 ngx_get_cpu_affinity(ngx_uint_t n)
 {
@@ -1424,7 +1464,7 @@ ngx_get_cpu_affinity(ngx_uint_t n)
         mask = &ccf->cpu_affinity[ccf->cpu_affinity_n - 1];
 
         for (i = 0, j = n; /* void */ ; i++) {
-
+            /* strange , find the number j useful cpu */
             if (CPU_ISSET(i % CPU_SETSIZE, mask) && j-- == 0) {
                 break;
             }
@@ -1457,6 +1497,10 @@ ngx_get_cpu_affinity(ngx_uint_t n)
 }
 
 
+/*
+    worker_processes config dealer
+    means the number of worker process
+*/
 static char *
 ngx_set_worker_processes(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -1486,8 +1530,11 @@ ngx_set_worker_processes(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+/*
+    load_module config item dealer
+*/
 static char *
-ngx_load_module(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) /* load module command */
+ngx_load_module(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
 #if (NGX_HAVE_DLOPEN)
     void                *handle;

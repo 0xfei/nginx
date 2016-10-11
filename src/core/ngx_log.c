@@ -255,6 +255,9 @@ ngx_log_abort(ngx_err_t err, const char *fmt, ...)
 }
 
 
+/*
+    ngx_write_console(ngx_stderr)
+*/
 void ngx_cdecl
 ngx_log_stderr(ngx_err_t err, const char *fmt, ...)
 {
@@ -284,6 +287,9 @@ ngx_log_stderr(ngx_err_t err, const char *fmt, ...)
 }
 
 
+/*
+    add err(the int value) and ngx_sys_errlist[err] to buf
+*/
 u_char *
 ngx_log_errno(u_char *buf, u_char *last, ngx_err_t err)
 {
@@ -314,6 +320,10 @@ ngx_log_errno(u_char *buf, u_char *last, ngx_err_t err)
 }
 
 
+/*
+    ngx_log.file = &ngx_log_file
+    ngx_log_file.fd = open(NGX_LOG_FILE) or stderr
+*/
 ngx_log_t *
 ngx_log_init(u_char *prefix)
 {

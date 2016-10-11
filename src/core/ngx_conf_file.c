@@ -846,7 +846,9 @@ ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return rv;
 }
 
-/* concat with conf_prefix */
+/*
+    concat with conf_prefix
+*/
 ngx_int_t
 ngx_conf_full_name(ngx_cycle_t *cycle, ngx_str_t *name, ngx_uint_t conf_prefix)
 {
@@ -986,6 +988,9 @@ ngx_conf_log_error(ngx_uint_t level, ngx_conf_t *cf, ngx_err_t err,
 }
 
 
+/*
+    set on|off
+*/
 char *
 ngx_conf_set_flag_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -1036,6 +1041,7 @@ ngx_conf_set_str_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     field = (ngx_str_t *) (p + cmd->offset);
 
+    /* must be zero */
     if (field->data) {
         return "is duplicate";
     }
@@ -1231,12 +1237,13 @@ ngx_conf_set_msec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
     msp = (ngx_msec_t *) (p + cmd->offset);
+    /* must initialize with NGX_CONF_UNSET_MSEC */
     if (*msp != NGX_CONF_UNSET_MSEC) {
         return "is duplicate";
     }
 
     value = cf->args->elts;
-
+    /* parse time to msecs */
     *msp = ngx_parse_time(&value[1], 0);
     if (*msp == (ngx_msec_t) NGX_ERROR) {
         return "invalid value";
@@ -1319,6 +1326,8 @@ ngx_conf_set_enum_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_uint_t       *np, i;
     ngx_str_t        *value;
+    /* ngx_conf_enum_t , used by ngx_conf_set_enum_slot
+     predefined value used */
     ngx_conf_enum_t  *e;
 
     np = (ngx_uint_t *) (p + cmd->offset);
