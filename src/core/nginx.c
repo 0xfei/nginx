@@ -289,9 +289,10 @@ main(int argc, char *const *argv)
 
     /* init the most important struct init_cycle
        main work:
-       1.
-       2.
-       3. 
+       1. copy init_cycle conf path related param to cycle 
+       2. open files, initialize shared-memory, initialize all params
+       3. cycle->modules, call CORE_MODULE->create_conf , save to conf_ctx
+       4. parse config, and call CORE_MODULE->init_conf , and others
       */
     cycle = ngx_init_cycle(&init_cycle);
     if (cycle == NULL) {
@@ -303,7 +304,7 @@ main(int argc, char *const *argv)
         return 1;
     }
 
-    // output the config messages for test
+    /* output the config messages for test */
     if (ngx_test_config) {
         if (!ngx_quiet_mode) {
             ngx_log_stderr(0, "configuration file %s test is successful",

@@ -33,6 +33,9 @@ static ngx_connection_t  dumb;
 /* STUB */
 
 
+/*
+    called by main or reconfigration , old_cycle is init_cycle
+*/
 ngx_cycle_t *
 ngx_init_cycle(ngx_cycle_t *old_cycle)
 {
@@ -1008,6 +1011,11 @@ ngx_delete_pidfile(ngx_cycle_t *cycle)
 }
 
 
+/*
+    open ngx_core_conf_t->pid file
+    read pid
+    call kill sig 
+*/
 ngx_int_t
 ngx_signal_process(ngx_cycle_t *cycle, char *sig)
 {

@@ -57,9 +57,11 @@ static ngx_uint_t argument_number[] = {
     NGX_CONF_TAKE7
 };
 
-
+/*
+    deal with conf param
+*/
 char *
-ngx_conf_param(ngx_conf_t *cf)  /* deal with conf param */
+ngx_conf_param(ngx_conf_t *cf)
 {
     char             *rv;
     ngx_str_t        *param;
@@ -97,8 +99,11 @@ ngx_conf_param(ngx_conf_t *cf)  /* deal with conf param */
 }
 
 
+/*
+    conf parser
+*/
 char *
-ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename) /* conf parser */
+ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
 {
     char             *rv;
     u_char           *p;
