@@ -529,6 +529,10 @@ ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 }
 
 
+/*
+    ngx_core_conf_t->environment saves env cared environment
+    config env
+*/
 char **
 ngx_set_environment(ngx_cycle_t *cycle, ngx_uint_t *last)
 {
@@ -558,6 +562,7 @@ ngx_set_environment(ngx_cycle_t *cycle, ngx_uint_t *last)
         return NULL;
     }
 
+    /* timezone */
     var->len = 2;
     var->data = (u_char *) "TZ";
 
@@ -568,7 +573,7 @@ tz_found:
     n = 0;
 
     for (i = 0; i < ccf->env.nelts; i++) {
-
+        /* end with =, cared */
         if (var[i].data[var[i].len] == '=') {
             n++;
             continue;
@@ -1261,7 +1266,7 @@ ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 /*
-    what if config has no '=' ??
+    just set env key, not include value
 */
 static char *
 ngx_set_env(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)

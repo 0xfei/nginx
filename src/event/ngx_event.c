@@ -116,7 +116,7 @@ ngx_module_t  ngx_events_module = {
 
 static ngx_str_t  event_core_name = ngx_string("event_core");
 
-
+/* ngx_event_core_module cared commands config */
 static ngx_command_t  ngx_event_core_commands[] = {
 
     { ngx_string("worker_connections"),
@@ -133,6 +133,7 @@ static ngx_command_t  ngx_event_core_commands[] = {
       0,
       NULL },
 
+    /* multi_accept on|off */
     { ngx_string("multi_accept"),
       NGX_EVENT_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -140,6 +141,7 @@ static ngx_command_t  ngx_event_core_commands[] = {
       offsetof(ngx_event_conf_t, multi_accept),
       NULL },
 
+    /* accept_mutex on|off */
     { ngx_string("accept_mutex"),
       NGX_EVENT_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
@@ -147,6 +149,7 @@ static ngx_command_t  ngx_event_core_commands[] = {
       offsetof(ngx_event_conf_t, accept_mutex),
       NULL },
 
+    /* accept_mutex_delay 10s */
     { ngx_string("accept_mutex_delay"),
       NGX_EVENT_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
@@ -190,6 +193,10 @@ ngx_module_t  ngx_event_core_module = {
 };
 
 
+/*
+    dispatch events and manage timer
+    main work here
+*/
 void
 ngx_process_events_and_timers(ngx_cycle_t *cycle)
 {
@@ -947,6 +954,7 @@ ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (m->create_conf) {
             (*ctx)[cf->cycle->modules[i]->ctx_index] =
                                                      m->create_conf(cf->cycle);
+            /* saved in it , this is why NGX_MAIN_CONF */
             if ((*ctx)[cf->cycle->modules[i]->ctx_index] == NULL) {
                 return NGX_CONF_ERROR;
             }
@@ -988,6 +996,9 @@ ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+/*
+    worker_connections in event{}
+*/
 static char *
 ngx_event_connections(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -1014,6 +1025,12 @@ ngx_event_connections(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+/*
+    use in event{}
+    samples:
+        use epoll;
+        use select;
+*/
 static char *
 ngx_event_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -1049,6 +1066,7 @@ ngx_event_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 ecf->use = cf->cycle->modules[m]->ctx_index;
                 ecf->name = module->name->data;
 
+                /* single process, must use the same ! */
                 if (ngx_process == NGX_PROCESS_SINGLE
                     && old_ecf
                     && old_ecf->use != ecf->use)
@@ -1077,6 +1095,9 @@ ngx_event_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+/*
+    debug_connection on event{}
+*/
 static char *
 ngx_event_debug_connection(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -1181,6 +1202,10 @@ ngx_event_debug_connection(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+/*
+    called by events dealer --- ngx_events_block
+    before parse commands
+*/
 static void *
 ngx_event_core_create_conf(ngx_cycle_t *cycle)
 {
@@ -1212,6 +1237,10 @@ ngx_event_core_create_conf(ngx_cycle_t *cycle)
 }
 
 
+/*
+    called after commands parsed
+    select module, and set default value of ngx_event_conf_t
+*/
 static char *
 ngx_event_core_init_conf(ngx_cycle_t *cycle, void *conf)
 {
@@ -1226,6 +1255,7 @@ ngx_event_core_init_conf(ngx_cycle_t *cycle, void *conf)
 
     module = NULL;
 
+    /* event deal module select */
 #if (NGX_HAVE_EPOLL) && !(NGX_TEST_BUILD_EPOLL)
 
     fd = epoll_create(100);
@@ -1261,6 +1291,7 @@ ngx_event_core_init_conf(ngx_cycle_t *cycle, void *conf)
 #endif
 
     if (module == NULL) {
+        /* select a user-defined (first show up) NGX_EVENT_MODULE as event deal module */
         for (i = 0; cycle->modules[i]; i++) {
 
             if (cycle->modules[i]->type != NGX_EVENT_MODULE) {
@@ -1284,11 +1315,13 @@ ngx_event_core_init_conf(ngx_cycle_t *cycle, void *conf)
         return NGX_CONF_ERROR;
     }
 
+    // default connections 512
     ngx_conf_init_uint_value(ecf->connections, DEFAULT_CONNECTIONS);
     cycle->connection_n = ecf->connections;
 
     ngx_conf_init_uint_value(ecf->use, module->ctx_index);
 
+    // event_module -> global event deal module
     event_module = module->ctx;
     ngx_conf_init_ptr_value(ecf->name, event_module->name->data);
 

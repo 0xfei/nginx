@@ -323,9 +323,10 @@ done:
 
 /*
     call command, module cared 
+    parse all config, and call all commands
 */
 static ngx_int_t
-ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
+ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last) /*call all commands */
 {
     char           *rv;
     void           *conf, **confp;

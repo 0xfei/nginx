@@ -69,6 +69,9 @@ static ngx_log_t        ngx_exit_log;
 static ngx_open_file_t  ngx_exit_log_file;
 
 
+/*
+    master
+*/
 void
 ngx_master_process_cycle(ngx_cycle_t *cycle)
 {
@@ -284,16 +287,21 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 }
 
 
+/*
+    single process
+*/
 void
 ngx_single_process_cycle(ngx_cycle_t *cycle)
 {
     ngx_uint_t  i;
 
+    /* cycle->environment */
     if (ngx_set_environment(cycle, NULL) == NULL) {
         /* fatal */
         exit(2);
     }
 
+    /* call module->init_process */
     for (i = 0; cycle->modules[i]; i++) {
         if (cycle->modules[i]->init_process) {
             if (cycle->modules[i]->init_process(cycle) == NGX_ERROR) {
@@ -308,6 +316,8 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
 
         ngx_process_events_and_timers(cycle);
 
+        // ngx_terminate and ngx_quit set by signal
+        // SIGINT & QUIT
         if (ngx_terminate || ngx_quit) {
 
             for (i = 0; cycle->modules[i]; i++) {
@@ -319,6 +329,8 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
             ngx_master_process_exit(cycle);
         }
 
+        // ngx_reconfigure call ngx_init_cycle to change cycle struct
+        // HUP signal
         if (ngx_reconfigure) {
             ngx_reconfigure = 0;
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "reconfiguring");
@@ -332,6 +344,8 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
             ngx_cycle = cycle;
         }
 
+        // ngx_reopen_files when file changes
+        // USR1 & INFO
         if (ngx_reopen) {
             ngx_reopen = 0;
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "reopening logs");
@@ -680,6 +694,9 @@ ngx_reap_children(ngx_cycle_t *cycle)
 }
 
 
+/*
+    master exit || single process exit
+*/
 static void
 ngx_master_process_exit(ngx_cycle_t *cycle)
 {
@@ -689,6 +706,7 @@ ngx_master_process_exit(ngx_cycle_t *cycle)
 
     ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exit");
 
+    /* call exit_master */
     for (i = 0; cycle->modules[i]; i++) {
         if (cycle->modules[i]->exit_master) {
             cycle->modules[i]->exit_master(cycle);
@@ -712,6 +730,7 @@ ngx_master_process_exit(ngx_cycle_t *cycle)
     ngx_exit_log.next = NULL;
     ngx_exit_log.writer = NULL;
 
+    /* cleaup file deals when destroy pool */
     ngx_exit_cycle.log = &ngx_exit_log;
     ngx_exit_cycle.files = ngx_cycle->files;
     ngx_exit_cycle.files_n = ngx_cycle->files_n;

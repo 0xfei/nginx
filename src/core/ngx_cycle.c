@@ -999,6 +999,9 @@ ngx_create_pidfile(ngx_str_t *name, ngx_log_t *log)
 }
 
 
+/*
+    delete ccf->pid | ccf->oldpid when ngx_new_binary
+*/
 void
 ngx_delete_pidfile(ngx_cycle_t *cycle)
 {
@@ -1109,6 +1112,11 @@ ngx_test_lockfile(u_char *file, ngx_log_t *log)
 }
 
 
+/*
+    USR1 signal
+    called when ngx_reopen == 1
+    close oldfd and set new fd
+*/
 void
 ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
 {
