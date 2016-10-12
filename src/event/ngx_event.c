@@ -157,6 +157,7 @@ static ngx_command_t  ngx_event_core_commands[] = {
       offsetof(ngx_event_conf_t, accept_mutex_delay),
       NULL },
 
+    /* ngx_cidr_t on ngx->debug_connections array */
     { ngx_string("debug_connection"),
       NGX_EVENT_CONF|NGX_CONF_TAKE1,
       ngx_event_debug_connection,
@@ -1097,6 +1098,7 @@ ngx_event_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 /*
     debug_connection on event{}
+    remote debug ??
 */
 static char *
 ngx_event_debug_connection(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
