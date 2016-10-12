@@ -274,6 +274,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     log->log_level = NGX_LOG_DEBUG_ALL;
 #endif
 
+    /* configuration dealed here */
     if (ngx_conf_param(&conf) != NGX_CONF_OK) {
         environ = senv;
         ngx_destroy_cycle_pools(&conf);
@@ -315,6 +316,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
+
     /* pidfile related */
     if (ngx_test_config) {
 
@@ -359,7 +361,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         goto failed;
     }
 
-    /* open the new files */
+    /* open the new files , fcntl FD_CLOEXEC */
 
     part = &cycle->open_files.part;
     file = part->elts;
@@ -949,6 +951,9 @@ ngx_init_zone_pool(ngx_cycle_t *cycle, ngx_shm_zone_t *zn)
 }
 
 
+/*
+    just create file and write PID to it 
+*/
 ngx_int_t
 ngx_create_pidfile(ngx_str_t *name, ngx_log_t *log)
 {
@@ -1070,6 +1075,9 @@ ngx_signal_process(ngx_cycle_t *cycle, char *sig)
 }
 
 
+/*
+    open close delete
+*/
 static ngx_int_t
 ngx_test_lockfile(u_char *file, ngx_log_t *log)
 {
@@ -1300,6 +1308,10 @@ ngx_shared_memory_add(ngx_conf_t *cf, ngx_str_t *name, size_t size, void *tag)
 }
 
 
+/*
+    old_cycles cleaned 
+    by ngx_cleaner_event wakeup
+*/
 static void
 ngx_clean_old_cycles(ngx_event_t *ev)
 {

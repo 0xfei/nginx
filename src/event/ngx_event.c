@@ -407,6 +407,9 @@ ngx_handle_write_event(ngx_event_t *wev, size_t lowat)
 }
 
 
+/*
+    simply test if config is ok
+*/
 static char *
 ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 {
@@ -901,6 +904,9 @@ ngx_send_lowat(ngx_connection_t *c, size_t lowat)
 }
 
 
+/*
+    events config dealer
+*/
 static char *
 ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -930,13 +936,14 @@ ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     *(void **) conf = ctx;
 
+    /* call create_conf of sub_module, these type is NGX_EVENT_MODULE */
     for (i = 0; cf->cycle->modules[i]; i++) {
         if (cf->cycle->modules[i]->type != NGX_EVENT_MODULE) {
             continue;
         }
 
         m = cf->cycle->modules[i]->ctx;
-
+        
         if (m->create_conf) {
             (*ctx)[cf->cycle->modules[i]->ctx_index] =
                                                      m->create_conf(cf->cycle);
@@ -946,6 +953,7 @@ ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
+    /* write to EVENTS Array, with module_type and cmd_type */
     pcf = *cf;
     cf->ctx = ctx;
     cf->module_type = NGX_EVENT_MODULE;
@@ -958,7 +966,8 @@ ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (rv != NGX_CONF_OK) {
         return rv;
     }
-
+    
+    /* call init_conf of sub_module */
     for (i = 0; cf->cycle->modules[i]; i++) {
         if (cf->cycle->modules[i]->type != NGX_EVENT_MODULE) {
             continue;

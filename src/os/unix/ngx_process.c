@@ -313,7 +313,8 @@ ngx_init_signals(ngx_log_t *log)
 
 
 /*
-    signal handler
+    signal handler, all came here
+    just set global variables
 */
 void
 ngx_signal_handler(int signo)

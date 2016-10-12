@@ -10,7 +10,8 @@
 
 
 /*
-    work as daemon
+    work as daemon ->
+    just work background --- means dup2 STDIN_FILENO STDOUT_FILENO
 */
 ngx_int_t
 ngx_daemon(ngx_log_t *log)

@@ -355,7 +355,7 @@ main(int argc, char *const *argv)
         return 1;
     }
 
-    // ngx_daemon
+    /* */
     if (!ngx_inherited && ccf->daemon) {
         if (ngx_daemon(cycle->log) != NGX_OK) {
             return 1;
@@ -481,11 +481,8 @@ ngx_add_inherited_sockets(ngx_cycle_t *cycle)
     ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
                   "using inherited sockets from \"%s\"", inherited);
 
-<<<<<<< HEAD
-    // initialize listeing
-=======
-    // initialize listeing as 10 array items
->>>>>>> f390dc53cd49cf6972d146bc8e253bfc120f4d64
+
+    /* initialize listeing */
     if (ngx_array_init(&cycle->listening, cycle->pool, 10,
                        sizeof(ngx_listening_t))
         != NGX_OK)

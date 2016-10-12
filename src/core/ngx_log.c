@@ -410,6 +410,9 @@ ngx_log_init(u_char *prefix)
 }
 
 
+/*
+    open default log : logs/error.log
+*/
 ngx_int_t
 ngx_log_open_default(ngx_cycle_t *cycle)
 {

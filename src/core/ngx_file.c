@@ -568,6 +568,9 @@ ngx_add_path(ngx_conf_t *cf, ngx_path_t **slot)
 }
 
 
+/*
+    create cycle->paths
+*/
 ngx_int_t
 ngx_create_paths(ngx_cycle_t *cycle, ngx_uid_t user)
 {
