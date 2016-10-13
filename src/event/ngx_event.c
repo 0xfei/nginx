@@ -280,6 +280,10 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
 }
 
 
+/*
+    just call ngx_add_event
+    like ngx_epoll_add_event NGX_READ_EVENT
+*/
 ngx_int_t
 ngx_handle_read_event(ngx_event_t *rev, ngx_uint_t flags)
 {
@@ -348,6 +352,10 @@ ngx_handle_read_event(ngx_event_t *rev, ngx_uint_t flags)
 }
 
 
+/*
+    just call ngx_add_event
+    NGX_WRITE_EVENT with NGX_LOWAT_EVENT
+*/
 ngx_int_t
 ngx_handle_write_event(ngx_event_t *wev, size_t lowat)
 {
@@ -920,6 +928,10 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 }
 
 
+/*
+    setsockopt SOL_SOCKET SO_SNDLOWAT
+    after lowat message , event must be dealed
+*/
 ngx_int_t
 ngx_send_lowat(ngx_connection_t *c, size_t lowat)
 {
