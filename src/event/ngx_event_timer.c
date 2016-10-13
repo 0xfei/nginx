@@ -29,6 +29,9 @@ ngx_event_timer_init(ngx_log_t *log)
 }
 
 
+/*
+    return miniest time - current_time
+*/
 ngx_msec_t
 ngx_event_find_timer(void)
 {
@@ -50,6 +53,10 @@ ngx_event_find_timer(void)
 }
 
 
+/*
+    execute all timer handler on ngx_event_timer_rbtree
+    which node->key > ngx_current_msec
+*/
 void
 ngx_event_expire_timers(void)
 {
@@ -96,6 +103,9 @@ ngx_event_expire_timers(void)
 }
 
 
+/*
+    just execute , until ev->cancelable == 0
+*/
 void
 ngx_event_cancel_timers(void)
 {

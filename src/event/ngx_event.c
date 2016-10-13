@@ -196,7 +196,7 @@ ngx_module_t  ngx_event_core_module = {
 
 /*
     dispatch events and manage timer
-    main work here
+    main work loop here
 */
 void
 ngx_process_events_and_timers(ngx_cycle_t *cycle)
@@ -224,10 +224,13 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
     }
 
     if (ngx_use_accept_mutex) {
+        // ngx_accept_disabled is initialize 0, and set value after accept
+        // means after connections this can works
         if (ngx_accept_disabled > 0) {
             ngx_accept_disabled--;
 
         } else {
+            // only one can accept
             if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
                 return;
             }
@@ -247,23 +250,32 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
 
     delta = ngx_current_msec;
 
+    /*
+     events process
+     ngx_epoll_process_events
+     timer is max_wait_time
+    */
     (void) ngx_process_events(cycle, timer, flags);
 
     delta = ngx_current_msec - delta;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "timer delta: %M", delta);
-
+    
+    // accept queue dealer
     ngx_event_process_posted(cycle, &ngx_posted_accept_events);
 
+    // release ngx_accept_mutex
     if (ngx_accept_mutex_held) {
         ngx_shmtx_unlock(&ngx_accept_mutex);
     }
 
+    // time dealer
     if (delta) {
         ngx_event_expire_timers();
     }
 
+    // data queue dealer
     ngx_event_process_posted(cycle, &ngx_posted_events);
 }
 

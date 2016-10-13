@@ -639,6 +639,9 @@ ngx_event_recvmsg(ngx_event_t *ev)
 #endif
 
 
+/*
+    tray get accept mutext
+*/
 ngx_int_t
 ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
 {

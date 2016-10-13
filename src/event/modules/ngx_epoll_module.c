@@ -812,6 +812,10 @@ ngx_epoll_notify(ngx_event_handler_pt handler)
 #endif
 
 
+/*
+    deal events, epoll_wait timer
+
+*/
 static ngx_int_t
 ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 {
@@ -865,6 +869,7 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
         return NGX_ERROR;
     }
 
+    /* event alarm */
     for (i = 0; i < events; i++) {
         c = event_list[i].data.ptr;
 
@@ -873,6 +878,7 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 
         rev = c->read;
 
+        // instance care
         if (c->fd == -1 || rev->instance != instance) {
 
             /*
