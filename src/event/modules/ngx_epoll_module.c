@@ -558,6 +558,12 @@ failed:
 #endif
 
 
+/*
+    ngx_event_actions.done
+    close ep
+    io_destroy
+    ngx_free(event_list)
+*/
 static void
 ngx_epoll_done(ngx_cycle_t *cycle)
 {
@@ -607,6 +613,11 @@ ngx_epoll_done(ngx_cycle_t *cycle)
 }
 
 
+/*
+    ngx_event_actions.add
+    ngx_event_actions.enable
+    epoll_ctl EPOLL_CTL_MOD or EPOLL_CTL_ADD
+*/
 static ngx_int_t
 ngx_epoll_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 {
@@ -635,6 +646,7 @@ ngx_epoll_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 #endif
     }
 
+    // modify if c->write ok for read
     if (e->active) {
         op = EPOLL_CTL_MOD;
         events |= prev;
@@ -671,6 +683,13 @@ ngx_epoll_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 }
 
 
+/*
+    ngx_event_actions.del
+    ngx_event_actions.disable
+    epoll_ctl EPOLL_CTL_DEL
+    but this can EPOLL_CTL_MOD , strange
+    but ev->active = 0
+*/
 static ngx_int_t
 ngx_epoll_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 {
@@ -729,6 +748,11 @@ ngx_epoll_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 }
 
 
+/*
+    epoll_ctl EPOLL_CTL_ADD c->fd 
+    with events EPOLLIN|EPOLLOUT|EPOLLET|EPOLLRDHUP
+    data.ptr = ngx_connections_t | instance
+*/
 static ngx_int_t
 ngx_epoll_add_connection(ngx_connection_t *c)
 {
@@ -753,6 +777,9 @@ ngx_epoll_add_connection(ngx_connection_t *c)
 }
 
 
+/*
+    epoll_ctl EPOLL_CTL_DEL c->fd
+*/
 static ngx_int_t
 ngx_epoll_del_connection(ngx_connection_t *c, ngx_uint_t flags)
 {
@@ -792,7 +819,10 @@ ngx_epoll_del_connection(ngx_connection_t *c, ngx_uint_t flags)
 
 
 #if (NGX_HAVE_EVENTFD)
-
+/*
+    used in thread_pool
+    set notify_fd 's related notify_event and handler 
+*/
 static ngx_int_t
 ngx_epoll_notify(ngx_event_handler_pt handler)
 {
@@ -814,7 +844,7 @@ ngx_epoll_notify(ngx_event_handler_pt handler)
 
 /*
     deal events, epoll_wait timer
-
+    only read and write event ..
 */
 static ngx_int_t
 ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
