@@ -634,6 +634,10 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     pool->log = cycle->log;
 
+    /*
+        call module init
+        as the last step of ngx_cycle_init
+    */
     if (ngx_init_modules(cycle) != NGX_OK) {
         /* fatal */
         exit(1);

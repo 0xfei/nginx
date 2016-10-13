@@ -431,6 +431,11 @@ ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 }
 
 
+/*
+    module init 
+    called in ngx_cycle_init
+    initialize sharedmemory of ngx_mutext and ngx global stat(connections counter) 
+*/
 static ngx_int_t
 ngx_event_module_init(ngx_cycle_t *cycle)
 {
@@ -452,6 +457,7 @@ ngx_event_module_init(ngx_cycle_t *cycle)
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
+    /* timer_resolution config */
     ngx_timer_resolution = ccf->timer_resolution;
 
 #if !(NGX_WIN32)
@@ -459,6 +465,7 @@ ngx_event_module_init(ngx_cycle_t *cycle)
     ngx_int_t      limit;
     struct rlimit  rlmt;
 
+    /* max connections */
     if (getrlimit(RLIMIT_NOFILE, &rlmt) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       "getrlimit(RLIMIT_NOFILE) failed, ignored");
@@ -489,7 +496,7 @@ ngx_event_module_init(ngx_cycle_t *cycle)
         return NGX_OK;
     }
 
-
+    /* initialize ngx_mutex ngx_stat buffer */
     /* cl should be equal to or greater than cache line size */
 
     cl = 128;
@@ -524,6 +531,8 @@ ngx_event_module_init(ngx_cycle_t *cycle)
     ngx_accept_mutex_ptr = (ngx_atomic_t *) shared;
     ngx_accept_mutex.spin = (ngx_uint_t) -1;
 
+    /* create lock file when not atomic support 
+       ngx_accept_mutext->lock = shared->lock */
     if (ngx_shmtx_create(&ngx_accept_mutex, (ngx_shmtx_sh_t *) shared,
                          cycle->lock_file.data)
         != NGX_OK)
@@ -562,7 +571,10 @@ ngx_event_module_init(ngx_cycle_t *cycle)
 
 
 #if !(NGX_WIN32)
-
+/*
+    just ngx_event_timer_alarm = 1
+    SIGALRM signal handler
+*/
 static void
 ngx_timer_signal_handler(int signo)
 {
@@ -576,6 +588,10 @@ ngx_timer_signal_handler(int signo)
 #endif
 
 
+/*
+    process init callback
+    called at process_cycle start
+*/
 static ngx_int_t
 ngx_event_process_init(ngx_cycle_t *cycle)
 {
@@ -590,6 +606,7 @@ ngx_event_process_init(ngx_cycle_t *cycle)
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
     ecf = ngx_event_get_conf(cycle->conf_ctx, ngx_event_core_module);
 
+    /* condition of ngx_use_accept_mutext */
     if (ccf->master && ccf->worker_processes > 1 && ecf->accept_mutex) {
         ngx_use_accept_mutex = 1;
         ngx_accept_mutex_held = 0;
@@ -610,13 +627,17 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 
 #endif
 
+    /* two of the most import queue */
     ngx_queue_init(&ngx_posted_accept_events);
     ngx_queue_init(&ngx_posted_events);
 
+    /* timer manager , initialize a rbtree of */
     if (ngx_event_timer_init(cycle->log) == NGX_ERROR) {
         return NGX_ERROR;
     }
 
+    /* call ngx_event_core_module select ecf->use module 
+       call actions.init */
     for (m = 0; cycle->modules[m]; m++) {
         if (cycle->modules[m]->type != NGX_EVENT_MODULE) {
             continue;
@@ -638,6 +659,8 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 
 #if !(NGX_WIN32)
 
+    /* eventport and kqueue module will set NGX_USE_TIMER_EVENT 
+       set SIGALRM signal dealer */
     if (ngx_timer_resolution && !(ngx_event_flags & NGX_USE_TIMER_EVENT)) {
         struct sigaction  sa;
         struct itimerval  itv;
@@ -657,12 +680,14 @@ ngx_event_process_init(ngx_cycle_t *cycle)
         itv.it_value.tv_sec = ngx_timer_resolution / 1000;
         itv.it_value.tv_usec = (ngx_timer_resolution % 1000 ) * 1000;
 
+        // ITIMER_REAL means system time , raise SIGALRM
         if (setitimer(ITIMER_REAL, &itv, NULL) == -1) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                           "setitimer() failed");
         }
     }
 
+    /* use ngx_poll_module */
     if (ngx_event_flags & NGX_USE_FD_EVENT) {
         struct rlimit  rlmt;
 
@@ -682,7 +707,7 @@ ngx_event_process_init(ngx_cycle_t *cycle)
     }
 
 #else
-
+    // WIN32
     if (ngx_timer_resolution && !(ngx_event_flags & NGX_USE_TIMER_EVENT)) {
         ngx_log_error(NGX_LOG_WARN, cycle->log, 0,
                       "the \"timer_resolution\" directive is not supported "
@@ -692,6 +717,7 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 
 #endif
 
+    /* alloc cycle->connections */
     cycle->connections =
         ngx_alloc(sizeof(ngx_connection_t) * cycle->connection_n, cycle->log);
     if (cycle->connections == NULL) {
@@ -728,7 +754,7 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 
     do {
         i--;
-
+        // data means next
         c[i].data = next;
         c[i].read = &cycle->read_events[i];
         c[i].write = &cycle->write_events[i];
@@ -740,12 +766,17 @@ ngx_event_process_init(ngx_cycle_t *cycle)
     cycle->free_connections = next;
     cycle->free_connection_n = cycle->connection_n;
 
-    /* for each listening socket */
+    /* for each listening socket 
+       last thing of ngx_event_process_init
+       connect liestening with connection_t 
+       add all read_event to epoll , 
+       which means connections arrive */
 
     ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
 
 #if (NGX_HAVE_REUSEPORT)
+        /* ngx_worker == worker process param 'data' */
         if (ls[i].reuseport && ls[i].worker != ngx_worker) {
             continue;
         }
@@ -830,8 +861,8 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 
 #else
 
-        rev->handler = (c->type == SOCK_STREAM) ? ngx_event_accept
-                                                : ngx_event_recvmsg;
+        rev->handler = (c->type == SOCK_STREAM) ? ngx_event_accept   // tcp
+                                                : ngx_event_recvmsg; // udp
 
 #if (NGX_HAVE_REUSEPORT)
 

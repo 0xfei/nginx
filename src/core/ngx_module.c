@@ -62,8 +62,11 @@ ngx_cycle_modules(ngx_cycle_t *cycle)   /* copy ngx_modules to cycle->modules , 
 }
 
 
+/*
+    call modules->init_module
+*/
 ngx_int_t
-ngx_init_modules(ngx_cycle_t *cycle)    /* call modules->init_module */
+ngx_init_modules(ngx_cycle_t *cycle)
 {
     ngx_uint_t  i;
 

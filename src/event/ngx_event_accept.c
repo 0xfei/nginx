@@ -19,6 +19,9 @@ static void ngx_debug_accepted_connection(ngx_event_conf_t *ecf,
 #endif
 
 
+/*
+    tcp accept event dealer
+*/
 void
 ngx_event_accept(ngx_event_t *ev)
 {
@@ -317,7 +320,9 @@ ngx_event_accept(ngx_event_t *ev)
 
 
 #if !(NGX_WIN32)
-
+/*
+    udp data recv dealer
+*/
 void
 ngx_event_recvmsg(ngx_event_t *ev)
 {

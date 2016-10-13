@@ -158,6 +158,7 @@ static ngx_str_t      epoll_name = ngx_string("epoll");
 
 static ngx_command_t  ngx_epoll_commands[] = {
 
+    /* conf->events numbers */
     { ngx_string("epoll_events"),
       NGX_EVENT_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_num_slot,
@@ -165,6 +166,7 @@ static ngx_command_t  ngx_epoll_commands[] = {
       offsetof(ngx_epoll_conf_t, events),
       NULL },
 
+    /* aio_requests numbers */
     { ngx_string("worker_aio_requests"),
       NGX_EVENT_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_num_slot,
@@ -245,6 +247,11 @@ io_getevents(aio_context_t ctx, long min_nr, long nr, struct io_event *events,
 }
 
 
+/*
+    called in ngx_epoll_init
+    io_setup ngx_aio_ctx
+
+*/
 static void
 ngx_epoll_aio_init(ngx_cycle_t *cycle, ngx_epoll_conf_t *epcf)
 {
@@ -281,6 +288,7 @@ ngx_epoll_aio_init(ngx_cycle_t *cycle, ngx_epoll_conf_t *epcf)
         goto failed;
     }
 
+    /* when aio need, execute ngx_epoll_eventfd_handler(&ngx_eventfd_event) */
     ngx_eventfd_event.data = &ngx_eventfd_conn;
     ngx_eventfd_event.handler = ngx_epoll_eventfd_handler;
     ngx_eventfd_event.log = cycle->log;
@@ -296,6 +304,7 @@ ngx_epoll_aio_init(ngx_cycle_t *cycle, ngx_epoll_conf_t *epcf)
         return;
     }
 
+    /* error dealer */
     ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                   "epoll_ctl(EPOLL_CTL_ADD, eventfd) failed");
 
@@ -319,6 +328,13 @@ failed:
 #endif
 
 
+/*
+    called in ngx_event_process_init
+    epoll_create
+    notify_fd_init aio_init test_rdhup
+    create event_list 
+    initialize event related variables
+*/
 static ngx_int_t
 ngx_epoll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
 {
@@ -336,12 +352,14 @@ ngx_epoll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
         }
 
 #if (NGX_HAVE_EVENTFD)
+        /* add notify_fd */
         if (ngx_epoll_notify_init(cycle->log) != NGX_OK) {
             ngx_epoll_module_ctx.actions.notify = NULL;
         }
 #endif
 
 #if (NGX_HAVE_FILE_AIO)
+        /* asynchronous io */
         ngx_epoll_aio_init(cycle, epcf);
 #endif
 
@@ -350,6 +368,7 @@ ngx_epoll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
 #endif
     }
 
+    /* ngx_alloc event_list */
     if (nevents < epcf->events) {
         if (event_list) {
             ngx_free(event_list);
@@ -381,7 +400,11 @@ ngx_epoll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
 
 
 #if (NGX_HAVE_EVENTFD)
-
+/*
+    called in ngx_epoll_init
+    call eventfd or syscall to get a system-defined-fd notify_fd
+    epoll_ctl add notify_fd to epoll
+*/
 static ngx_int_t
 ngx_epoll_notify_init(ngx_log_t *log)
 {
@@ -401,6 +424,7 @@ ngx_epoll_notify_init(ngx_log_t *log)
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
                    "notify eventfd: %d", notify_fd);
 
+    /* when notify_fd wake, execute ngx_epoll_notify_handler(&notify_event) */
     notify_event.handler = ngx_epoll_notify_handler;
     notify_event.log = log;
     notify_event.active = 1;
@@ -428,6 +452,10 @@ ngx_epoll_notify_init(ngx_log_t *log)
 }
 
 
+/*
+    called when notify_fd wakeup
+    ++ev->index and execute ev->data(ev)
+*/
 static void
 ngx_epoll_notify_handler(ngx_event_t *ev)
 {
@@ -460,7 +488,11 @@ ngx_epoll_notify_handler(ngx_event_t *ev)
 
 
 #if (NGX_HAVE_EPOLLRDHUP)
-
+/*
+    simple test of EPOLLRDHUP
+    epoll_ctl add socketpair
+    then call epoll_wait
+*/
 static void
 ngx_epoll_test_rdhup(ngx_cycle_t *cycle)
 {
@@ -943,7 +975,11 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 
 
 #if (NGX_HAVE_FILE_AIO)
-
+/*
+    aio event handler
+    io_getevents deal aio requests
+    ngx_post_event 
+*/
 static void
 ngx_epoll_eventfd_handler(ngx_event_t *ev)
 {
@@ -982,6 +1018,7 @@ ngx_epoll_eventfd_handler(ngx_event_t *ev)
     ts.tv_sec = 0;
     ts.tv_nsec = 0;
 
+    /* numbers of aio request */
     while (ready) {
 
         events = io_getevents(ngx_aio_ctx, 1, 64, event, &ts);
@@ -998,7 +1035,10 @@ ngx_epoll_eventfd_handler(ngx_event_t *ev)
                                "io_event: %XL %XL %L %L",
                                 event[i].data, event[i].obj,
                                 event[i].res, event[i].res2);
-
+                /* when do aio 
+                   io_event.data must be ngx_event_t
+                   and ngx_event_aio_t be ngx_event_t->data 
+                   aio->res can assign wieh event[i].res */
                 e = (ngx_event_t *) (uintptr_t) event[i].data;
 
                 e->complete = 1;
@@ -1008,6 +1048,7 @@ ngx_epoll_eventfd_handler(ngx_event_t *ev)
                 aio = e->data;
                 aio->res = event[i].res;
 
+                /* add to ngx_posted_events queue*/
                 ngx_post_event(e, &ngx_posted_events);
             }
 
