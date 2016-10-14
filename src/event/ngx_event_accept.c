@@ -640,7 +640,9 @@ ngx_event_recvmsg(ngx_event_t *ev)
 
 
 /*
-    tray get accept mutext
+    tray get accept mutex
+    and , important thing is from here
+    ngx_enable_accept_events called
 */
 ngx_int_t
 ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
@@ -680,6 +682,11 @@ ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
 }
 
 
+/*
+    this is the function!
+    execute ngx_add_event to add cycle->listening.nelts
+    after this, epoll_wait can be called.
+*/
 static ngx_int_t
 ngx_enable_accept_events(ngx_cycle_t *cycle)
 {
@@ -705,6 +712,11 @@ ngx_enable_accept_events(ngx_cycle_t *cycle)
 }
 
 
+/*
+    execute ngx_del_event 
+    remove event from epoll
+    which read->active == 0 and not reuseport
+*/
 static ngx_int_t
 ngx_disable_accept_events(ngx_cycle_t *cycle, ngx_uint_t all)
 {
@@ -745,6 +757,9 @@ ngx_disable_accept_events(ngx_cycle_t *cycle, ngx_uint_t all)
 }
 
 
+/*
+    free_connection, close socket, destroy_pool, and ngx_stat_active --  
+*/
 static void
 ngx_close_accepted_connection(ngx_connection_t *c)
 {
@@ -770,6 +785,9 @@ ngx_close_accepted_connection(ngx_connection_t *c)
 }
 
 
+/*
+    error message format 
+*/
 u_char *
 ngx_accept_log_error(ngx_log_t *log, u_char *buf, size_t len)
 {
@@ -779,7 +797,9 @@ ngx_accept_log_error(ngx_log_t *log, u_char *buf, size_t len)
 
 
 #if (NGX_DEBUG)
-
+/*
+    seems not work
+*/
 static void
 ngx_debug_accepted_connection(ngx_event_conf_t *ecf, ngx_connection_t *c)
 {

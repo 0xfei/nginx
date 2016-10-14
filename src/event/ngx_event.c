@@ -185,7 +185,7 @@ ngx_module_t  ngx_event_core_module = {
     NGX_EVENT_MODULE,                      /* module type */
     NULL,                                  /* init master */
     ngx_event_module_init,                 /* init module */
-    ngx_event_process_init,                /* init process */
+    ngx_event_process_init,                /* init process, initialize connections pool, add them to read/write event */
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
     NULL,                                  /* exit process */
@@ -611,6 +611,7 @@ ngx_timer_signal_handler(int signo)
 /*
     process init callback
     called at process_cycle start
+    when ngx_use_accept_mutex donot ngx_add_event!!!
 */
 static ngx_int_t
 ngx_event_process_init(ngx_cycle_t *cycle)
@@ -870,6 +871,8 @@ ngx_event_process_init(ngx_cycle_t *cycle)
         } else {
             rev->handler = ngx_event_accept;
 
+            // why ???
+            // if ngx_use_accept_mutext , donot ngx_add_event
             if (ngx_use_accept_mutex) {
                 continue;
             }
@@ -885,7 +888,7 @@ ngx_event_process_init(ngx_cycle_t *cycle)
                                                 : ngx_event_recvmsg; // udp
 
 #if (NGX_HAVE_REUSEPORT)
-
+        // reuseport donot care about ngx_use_accept_mutext
         if (ls[i].reuseport) {
             if (ngx_add_event(rev, NGX_READ_EVENT, 0) == NGX_ERROR) {
                 return NGX_ERROR;
