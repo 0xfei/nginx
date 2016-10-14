@@ -87,6 +87,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
     ngx_listening_t   *ls;
     ngx_core_conf_t   *ccf;
 
+    /* block these signals at start */
     sigemptyset(&set);
     sigaddset(&set, SIGCHLD);
     sigaddset(&set, SIGALRM);
@@ -130,8 +131,10 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
+    // start worker process
     ngx_start_worker_processes(cycle, ccf->worker_processes,
                                NGX_PROCESS_RESPAWN);
+    // cache manager
     ngx_start_cache_manager_processes(cycle, 0);
 
     ngx_new_binary = 0;
@@ -139,7 +142,9 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
     sigio = 0;
     live = 1;
 
+    // the whole loop
     for ( ;; ) {
+        // normal delay, means nothing special, not signals
         if (delay) {
             if (ngx_sigalrm) {
                 sigio = 0;
@@ -170,6 +175,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                        "wake up, sigio %i", sigio);
 
+        // signal SIGCHLD or kill worker process
         if (ngx_reap) {
             ngx_reap = 0;
             ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "reap children");
@@ -177,10 +183,12 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
             live = ngx_reap_children(cycle);
         }
 
+        // all worker process exited
         if (!live && (ngx_terminate || ngx_quit)) {
             ngx_master_process_exit(cycle);
         }
 
+        // signal SIGINT
         if (ngx_terminate) {
             if (delay == 0) {
                 delay = 50;
@@ -191,6 +199,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
                 continue;
             }
 
+            // loop times
             sigio = ccf->worker_processes + 2 /* cache processes */;
 
             if (delay > 1000) {
@@ -203,6 +212,8 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
             continue;
         }
 
+        // signal QUIT
+        // here, we clean listening sockets
         if (ngx_quit) {
             ngx_signal_worker_processes(cycle,
                                         ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
@@ -220,9 +231,11 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
             continue;
         }
 
+        // signal HUP
         if (ngx_reconfigure) {
             ngx_reconfigure = 0;
 
+            // new master
             if (ngx_new_binary) {
                 ngx_start_worker_processes(cycle, ccf->worker_processes,
                                            NGX_PROCESS_RESPAWN);
@@ -234,6 +247,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "reconfiguring");
 
+            // ngx_init_cycle called here to reconfig
             cycle = ngx_init_cycle(cycle);
             if (cycle == NULL) {
                 cycle = (ngx_cycle_t *) ngx_cycle;
@@ -243,6 +257,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
             ngx_cycle = cycle;
             ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx,
                                                    ngx_core_module);
+            // NGX_PROCESS_JUST_RESPAWN used here
             ngx_start_worker_processes(cycle, ccf->worker_processes,
                                        NGX_PROCESS_JUST_RESPAWN);
             ngx_start_cache_manager_processes(cycle, 1);
@@ -255,6 +270,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
                                         ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
         }
 
+        // execute new binary restart
         if (ngx_restart) {
             ngx_restart = 0;
             ngx_start_worker_processes(cycle, ccf->worker_processes,
@@ -263,6 +279,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
             live = 1;
         }
 
+        // signal USR1/INFO
         if (ngx_reopen) {
             ngx_reopen = 0;
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "reopening logs");
@@ -271,12 +288,14 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
                                         ngx_signal_value(NGX_REOPEN_SIGNAL));
         }
 
+        // signal USR2/XCPU
         if (ngx_change_binary) {
             ngx_change_binary = 0;
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "changing binary");
             ngx_new_binary = ngx_exec_new_binary(cycle, ngx_argv);
         }
 
+        // signal WINCH
         if (ngx_noaccept) {
             ngx_noaccept = 0;
             ngx_noaccepting = 1;
@@ -355,6 +374,10 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
 }
 
 
+/*
+    start n worker processes
+    they will execute ngx_worker_process_cycle
+*/
 static void
 ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n, ngx_int_t type)
 {
@@ -381,6 +404,10 @@ ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n, ngx_int_t type)
 }
 
 
+/*
+    cache process
+    just call ngx_spawn_process to execute ngx_cache_manager_process_cycle
+*/
 static void
 ngx_start_cache_manager_processes(ngx_cycle_t *cycle, ngx_uint_t respawn)
 {
@@ -437,6 +464,10 @@ ngx_start_cache_manager_processes(ngx_cycle_t *cycle, ngx_uint_t respawn)
 }
 
 
+/*
+    for channel communicate
+    tell others this process'exists
+*/
 static void
 ngx_pass_open_channel(ngx_cycle_t *cycle, ngx_channel_t *ch)
 {
@@ -465,6 +496,9 @@ ngx_pass_open_channel(ngx_cycle_t *cycle, ngx_channel_t *ch)
 }
 
 
+/*
+    deal sigal by ngx_channel_t socket_pair
+*/
 static void
 ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
 {
@@ -519,6 +553,9 @@ ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
             continue;
         }
 
+        // do not known now just_spawn 
+        // ok just_spawn happens when this process is start as a new process 
+        // it should not been stoped
         if (ngx_processes[i].just_spawn) {
             ngx_processes[i].just_spawn = 0;
             continue;
@@ -535,6 +572,7 @@ ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
                                   &ch, sizeof(ngx_channel_t), cycle->log)
                 == NGX_OK)
             {
+                // means signals has been send to worker process
                 if (signo != ngx_signal_value(NGX_REOPEN_SIGNAL)) {
                     ngx_processes[i].exiting = 1;
                 }
@@ -543,6 +581,7 @@ ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
             }
         }
 
+        // not exit signal
         ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,
                        "kill (%P, %d)", ngx_processes[i].pid, signo);
 
@@ -551,6 +590,7 @@ ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
             ngx_log_error(NGX_LOG_ALERT, cycle->log, err,
                           "kill(%P, %d) failed", ngx_processes[i].pid, signo);
 
+            // ngx_reap means one worker process exited
             if (err == NGX_ESRCH) {
                 ngx_processes[i].exited = 1;
                 ngx_processes[i].exiting = 0;
@@ -567,6 +607,9 @@ ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
 }
 
 
+/*
+    when child exit, here called
+*/
 static ngx_uint_t
 ngx_reap_children(ngx_cycle_t *cycle)
 {
@@ -597,6 +640,7 @@ ngx_reap_children(ngx_cycle_t *cycle)
             continue;
         }
 
+        // close the communite pair
         if (ngx_processes[i].exited) {
 
             if (!ngx_processes[i].detached) {
@@ -627,6 +671,7 @@ ngx_reap_children(ngx_cycle_t *cycle)
                 }
             }
 
+            // try to restart it 
             if (ngx_processes[i].respawn
                 && !ngx_processes[i].exiting
                 && !ngx_terminate
@@ -656,6 +701,7 @@ ngx_reap_children(ngx_cycle_t *cycle)
                 continue;
             }
 
+            // new master process exit, need to restart
             if (ngx_processes[i].pid == ngx_new_binary) {
 
                 ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx,
@@ -742,6 +788,9 @@ ngx_master_process_exit(ngx_cycle_t *cycle)
 }
 
 
+/*
+    worker process execute this, after fork
+*/
 static void
 ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 {
@@ -756,6 +805,8 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
     for ( ;; ) {
 
+        // here, ngx_event_cancel_timers execute
+        // after time dealed, ngx_worker_process_exit called
         if (ngx_exiting) {
             ngx_event_cancel_timers();
 
@@ -769,14 +820,17 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "worker cycle");
 
+        // here, just like single process model
         ngx_process_events_and_timers(cycle);
 
+        // just terminate
         if (ngx_terminate) {
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exiting");
 
             ngx_worker_process_exit(cycle);
         }
 
+        // quit normal
         if (ngx_quit) {
             ngx_quit = 0;
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
@@ -790,6 +844,7 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
             }
         }
 
+        // reopen files
         if (ngx_reopen) {
             ngx_reopen = 0;
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "reopening logs");
@@ -799,6 +854,10 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 }
 
 
+/*
+    called start of ngx_worker_process_cycle
+    initialize the new worker process
+*/
 static void
 ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
 {
@@ -817,6 +876,7 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
+    // ccf->priority used here, by setpriority
     if (worker >= 0 && ccf->priority != 0) {
         if (setpriority(PRIO_PROCESS, 0, ccf->priority) == -1) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
@@ -824,6 +884,7 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
         }
     }
 
+    // ccf->rlimit_nofile used here
     if (ccf->rlimit_nofile != NGX_CONF_UNSET) {
         rlmt.rlim_cur = (rlim_t) ccf->rlimit_nofile;
         rlmt.rlim_max = (rlim_t) ccf->rlimit_nofile;
@@ -846,6 +907,7 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
         }
     }
 
+    // set user and group
     if (geteuid() == 0) {
         if (setgid(ccf->group) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
@@ -868,6 +930,7 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
         }
     }
 
+    // cpu_affinity
     if (worker >= 0) {
         cpu_affinity = ngx_get_cpu_affinity(worker);
 
@@ -887,6 +950,7 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
 
 #endif
 
+    // chdir to working_directory
     if (ccf->working_directory.len) {
         if (chdir((char *) ccf->working_directory.data) == -1) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
@@ -898,11 +962,13 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
 
     sigemptyset(&set);
 
+    // donot block signals
     if (sigprocmask(SIG_SETMASK, &set, NULL) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       "sigprocmask() failed");
     }
 
+    // random number initialized
     srandom((ngx_pid << 16) ^ ngx_time());
 
     /*
@@ -914,6 +980,7 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
         ls[i].previous = NULL;
     }
 
+    // init_process called here
     for (i = 0; cycle->modules[i]; i++) {
         if (cycle->modules[i]->init_process) {
             if (cycle->modules[i]->init_process(cycle) == NGX_ERROR) {
@@ -923,6 +990,7 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
         }
     }
 
+    // close other channel
     for (n = 0; n < ngx_last_process; n++) {
 
         if (ngx_processes[n].pid == -1) {
@@ -952,6 +1020,7 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
     ngx_last_process = 0;
 #endif
 
+    // add channel to epoll event 
     if (ngx_add_channel_event(cycle, ngx_channel, NGX_READ_EVENT,
                               ngx_channel_handler)
         == NGX_ERROR)
@@ -962,6 +1031,11 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
 }
 
 
+/*
+    terminate worker process
+    call exit_process of modules 
+    destroy pool and exit(0)
+*/
 static void
 ngx_worker_process_exit(ngx_cycle_t *cycle)
 {
@@ -1023,6 +1097,9 @@ ngx_worker_process_exit(ngx_cycle_t *cycle)
 }
 
 
+/*
+    handle channel message
+*/
 static void
 ngx_channel_handler(ngx_event_t *ev)
 {
@@ -1087,7 +1164,7 @@ ngx_channel_handler(ngx_event_t *ev)
             ngx_log_debug3(NGX_LOG_DEBUG_CORE, ev->log, 0,
                            "get channel s:%i pid:%P fd:%d",
                            ch.slot, ch.pid, ch.fd);
-
+            // new process
             ngx_processes[ch.slot].pid = ch.pid;
             ngx_processes[ch.slot].channel[0] = ch.fd;
             break;
@@ -1111,6 +1188,10 @@ ngx_channel_handler(ngx_event_t *ev)
 }
 
 
+/*
+    cache manager and loader process, data is 
+    ngx_cache_manager_ctx || ngx_cache_loader_ctx
+*/
 static void
 ngx_cache_manager_process_cycle(ngx_cycle_t *cycle, void *data)
 {
@@ -1157,11 +1238,17 @@ ngx_cache_manager_process_cycle(ngx_cycle_t *cycle, void *data)
             ngx_reopen_files(cycle, -1);
         }
 
+        // what the hell??? just for the timer ?
         ngx_process_events_and_timers(cycle);
     }
 }
 
 
+/*
+    real manager process, called by epoll timer
+    just call cycle->paths[i].loader(path[i].data)
+    and update time
+*/
 static void
 ngx_cache_manager_process_handler(ngx_event_t *ev)
 {
@@ -1191,6 +1278,11 @@ ngx_cache_manager_process_handler(ngx_event_t *ev)
 }
 
 
+/*
+    real cache loader process, same as above
+    just call cycle->paths[i].loader(path[i].data)
+    and update time
+*/
 static void
 ngx_cache_loader_process_handler(ngx_event_t *ev)
 {

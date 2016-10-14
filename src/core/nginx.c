@@ -634,6 +634,9 @@ tz_found:
 }
 
 
+/*
+    calld by signal XCPU/USR2, measn new execute file
+*/
 ngx_pid_t
 ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
 {
@@ -665,6 +668,8 @@ ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
         return NGX_INVALID_PID;
     }
 
+    // alright , here we can see NGINX environment set
+    // so listening_t can been inherited
     p = ngx_cpymem(var, NGINX_VAR "=", sizeof(NGINX_VAR));
 
     ls = cycle->listening.elts;
@@ -703,6 +708,7 @@ ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
+    // all here, answers of questions when i first read the code
     if (ngx_rename_file(ccf->pid.data, ccf->oldpid.data) == NGX_FILE_ERROR) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       ngx_rename_file_n " %s to %s failed "
@@ -733,6 +739,7 @@ ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
 
     return pid;
 }
+
 
 /*
     deal with options

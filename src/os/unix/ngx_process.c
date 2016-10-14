@@ -86,6 +86,11 @@ ngx_signal_t  signals[] = {
 };
 
 
+/*
+    spawn process, can been new master when respawn == NGX_PROCESS_DETACHED
+    or normal worker process
+    this while chose a process_slot for new process
+*/
 ngx_pid_t
 ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
     char *name, ngx_int_t respawn)
@@ -98,6 +103,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
         s = respawn;
 
     } else {
+        // select a index of new processes
         for (s = 0; s < ngx_last_process; s++) {
             if (ngx_processes[s].pid == -1) {
                 break;
@@ -113,6 +119,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
     }
 
 
+    // not master process
     if (respawn != NGX_PROCESS_DETACHED) {
 
         /* Solaris 9 still has no AF_LOCAL */
@@ -179,6 +186,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
         ngx_channel = ngx_processes[s].channel[1];
 
     } else {
+        // master process
         ngx_processes[s].channel[0] = -1;
         ngx_processes[s].channel[1] = -1;
     }
@@ -197,7 +205,9 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
         return NGX_INVALID_PID;
 
     case 0:
+        // new process
         ngx_pid = ngx_getpid();
+        // simple call execve
         proc(cycle, data);
         break;
 
@@ -260,6 +270,9 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
 }
 
 
+/*
+    called when execute new file
+*/
 ngx_pid_t
 ngx_execute(ngx_cycle_t *cycle, ngx_exec_ctx_t *ctx)
 {
@@ -268,6 +281,9 @@ ngx_execute(ngx_cycle_t *cycle, ngx_exec_ctx_t *ctx)
 }
 
 
+/*
+    param of proc
+*/
 static void
 ngx_execute_proc(ngx_cycle_t *cycle, void *data)
 {
