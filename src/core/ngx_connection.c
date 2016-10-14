@@ -18,6 +18,7 @@ static void ngx_drain_connections(void);
 
 /*
     cycle->listening
+    this must be called, if you want to add ngx_listeing_t
 */
 ngx_listening_t *
 ngx_create_listening(ngx_conf_t *cf, struct sockaddr *sockaddr,
