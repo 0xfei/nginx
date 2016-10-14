@@ -6,3 +6,10 @@ nginx provide basic data structure and algorithms. Stage 1 just read these files
 
 Stage 2:
 As stage 1 says, i should be more clear. So this stage, we read nginx.c and the main function, and mark of event module should be done.
+
+Good, seems this stage has been compeleted.
+
+Stage 3:
+1. http, upstream modules
+2. execute nginx and debug it
+3. write my own modules
