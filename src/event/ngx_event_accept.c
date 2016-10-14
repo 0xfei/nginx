@@ -332,6 +332,7 @@ ngx_event_accept(ngx_event_t *ev)
 #if !(NGX_WIN32)
 /*
     udp data recv dealer
+    this may only used on stream_core_module
 */
 void
 ngx_event_recvmsg(ngx_event_t *ev)
@@ -346,6 +347,7 @@ ngx_event_recvmsg(ngx_event_t *ev)
     ngx_listening_t   *ls;
     ngx_event_conf_t  *ecf;
     ngx_connection_t  *c, *lc;
+    // must be static
     static u_char      buffer[65535];
 
 #if (NGX_HAVE_MSGHDR_MSG_CONTROL)
