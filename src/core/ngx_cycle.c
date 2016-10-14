@@ -601,6 +601,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
 
     } else {
+        // here, first, listening.nelts = 0
         ls = cycle->listening.elts;
         for (i = 0; i < cycle->listening.nelts; i++) {
             ls[i].open = 1;

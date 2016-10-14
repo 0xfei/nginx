@@ -39,6 +39,7 @@ ngx_event_accept(ngx_event_t *ev)
     static ngx_uint_t  use_accept4 = 1;
 #endif
 
+    // time out 
     if (ev->timedout) {
         if (ngx_enable_accept_events((ngx_cycle_t *) ngx_cycle) != NGX_OK) {
             return;
@@ -73,6 +74,7 @@ ngx_event_accept(ngx_event_t *ev)
         s = accept(lc->fd, &sa.sockaddr, &socklen);
 #endif
 
+        // accept error, add it to timer_rbtree
         if (s == (ngx_socket_t) -1) {
             err = ngx_socket_errno;
 
@@ -141,6 +143,7 @@ ngx_event_accept(ngx_event_t *ev)
         (void) ngx_atomic_fetch_add(ngx_stat_accepted, 1);
 #endif
 
+        // initialize -7/8
         ngx_accept_disabled = ngx_cycle->connection_n / 8
                               - ngx_cycle->free_connection_n;
 
@@ -161,6 +164,7 @@ ngx_event_accept(ngx_event_t *ev)
         (void) ngx_atomic_fetch_add(ngx_stat_active, 1);
 #endif
 
+        // create pool for connections here
         c->pool = ngx_create_pool(ls->pool_size, ev->log);
         if (c->pool == NULL) {
             ngx_close_accepted_connection(c);
@@ -206,6 +210,7 @@ ngx_event_accept(ngx_event_t *ev)
 
         *log = ls->log;
 
+        // set c-> = ngx_os_io.recv
         c->recv = ngx_recv;
         c->send = ngx_send;
         c->recv_chain = ngx_recv_chain;
@@ -299,6 +304,7 @@ ngx_event_accept(ngx_event_t *ev)
         }
 #endif
 
+        // call ngx_add_conn if not use epoll
         if (ngx_add_conn && (ngx_event_flags & NGX_USE_EPOLL_EVENT) == 0) {
             if (ngx_add_conn(c) == NGX_ERROR) {
                 ngx_close_accepted_connection(c);
@@ -309,6 +315,9 @@ ngx_event_accept(ngx_event_t *ev)
         log->data = NULL;
         log->handler = NULL;
 
+        // ls->handler -- ngx_http_init_connection, ngx_mail_init_connection, ngx_steam_init_connection
+        // initialized http{} block dealer
+        // what if ls->handler == NULL ????
         ls->handler(c);
 
         if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
