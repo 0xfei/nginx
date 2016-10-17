@@ -255,6 +255,10 @@ ngx_stream_core_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+/*
+    upstream server param dealer
+    parse NGX_STREAM_SRV_CONF config
+*/
 static char *
 ngx_stream_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -329,6 +333,9 @@ ngx_stream_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+/*
+    listen param
+*/
 static char *
 ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -605,6 +612,9 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+/*
+    resolver param
+*/
 static char *
 ngx_stream_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {

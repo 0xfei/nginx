@@ -889,6 +889,9 @@ ngx_stream_variables_add_core_vars(ngx_conf_t *cf)
 }
 
 
+/*
+    init variables, with hash
+*/
 ngx_int_t
 ngx_stream_variables_init_vars(ngx_conf_t *cf)
 {

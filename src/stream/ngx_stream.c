@@ -63,6 +63,9 @@ ngx_module_t  ngx_stream_module = {
 };
 
 
+/*
+    stream block parser
+*/
 static char *
 ngx_stream_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -178,6 +181,8 @@ ngx_stream_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     cmcf = ctx->main_conf[ngx_stream_core_module.ctx_index];
     cscfp = cmcf->servers.elts;
 
+    /* all module-defined merge, not like http modules */
+
     for (m = 0; cf->cycle->modules[m]; m++) {
         if (cf->cycle->modules[m]->type != NGX_STREAM_MODULE) {
             continue;
@@ -230,6 +235,8 @@ ngx_stream_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
+    /* variables init */
+
     if (ngx_stream_variables_init_vars(cf) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
@@ -255,6 +262,9 @@ ngx_stream_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+/*
+    add listen to ports->addrs, who's port == listen->sockaddr.sockaddr.port 
+*/
 static ngx_int_t
 ngx_stream_add_ports(ngx_conf_t *cf, ngx_array_t *ports,
     ngx_stream_listen_t *listen)
@@ -313,6 +323,11 @@ found:
 }
 
 
+/*
+    create listening for every upstream addr 
+    accept handler is ngx_stream_init_connection
+    log.handler is ngx_accept_log_error
+*/
 static char *
 ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
 {
@@ -349,6 +364,7 @@ ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
 
         while (i < last) {
 
+            // wildcard situation
             if (bind_wildcard && !addr[i].opt.bind) {
                 i++;
                 continue;
@@ -427,6 +443,9 @@ ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
 }
 
 
+/*
+    initialize stport with addr
+*/
 static ngx_int_t
 ngx_stream_add_addrs(ngx_conf_t *cf, ngx_stream_port_t *stport,
     ngx_stream_conf_addr_t *addr)
@@ -525,6 +544,9 @@ ngx_stream_add_addrs6(ngx_conf_t *cf, ngx_stream_port_t *stport,
 #endif
 
 
+/*
+    wired rules
+*/
 static ngx_int_t
 ngx_stream_cmp_conf_addrs(const void *one, const void *two)
 {

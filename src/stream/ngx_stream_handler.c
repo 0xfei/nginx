@@ -20,6 +20,9 @@ static void ngx_stream_ssl_handshake_handler(ngx_connection_t *c);
 #endif
 
 
+/*
+    stream accept handler
+*/
 void
 ngx_stream_init_connection(ngx_connection_t *c)
 {
@@ -224,6 +227,9 @@ ngx_stream_init_connection(ngx_connection_t *c)
 }
 
 
+/*
+    called at last of ngx_stream_init_connection
+*/
 static void
 ngx_stream_init_session(ngx_connection_t *c)
 {
@@ -293,6 +299,11 @@ ngx_stream_ssl_handshake_handler(ngx_connection_t *c)
 #endif
 
 
+/*
+    close connection
+    ngx_close_connection
+    ngx_destroy_pool
+*/
 void
 ngx_stream_close_connection(ngx_connection_t *c)
 {
@@ -324,6 +335,9 @@ ngx_stream_close_connection(ngx_connection_t *c)
 }
 
 
+/*
+    error log
+*/
 static u_char *
 ngx_stream_log_error(ngx_log_t *log, u_char *buf, size_t len)
 {
