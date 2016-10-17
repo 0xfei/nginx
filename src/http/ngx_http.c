@@ -117,7 +117,7 @@ ngx_module_t  ngx_http_module = {
 
 
 /*
-    http config dealer
+    http config dealer, http{}
 */
 static char *
 ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
@@ -216,6 +216,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
+    /* call preconfiguration of the all http modules */
     pcf = *cf;
     cf->ctx = ctx;
 
@@ -268,6 +269,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             }
         }
 
+        /* merge the server{} */
         rv = ngx_http_merge_servers(cf, cmcf, module, mi);
         if (rv != NGX_CONF_OK) {
             goto failed;
@@ -560,6 +562,9 @@ ngx_http_init_phase_handlers(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf)
 }
 
 
+/*
+    merge server level with main config
+*/
 static char *
 ngx_http_merge_servers(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf,
     ngx_http_module_t *module, ngx_uint_t ctx_index)
@@ -622,6 +627,9 @@ failed:
 }
 
 
+/*
+    merge location config, recursionly
+*/
 static char *
 ngx_http_merge_locations(ngx_conf_t *cf, ngx_queue_t *locations,
     void **loc_conf, ngx_http_module_t *module, ngx_uint_t ctx_index)
@@ -667,6 +675,9 @@ ngx_http_merge_locations(ngx_conf_t *cf, ngx_queue_t *locations,
 }
 
 
+/*
+    allocate cscf->named_locations
+*/
 static ngx_int_t
 ngx_http_init_locations(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
     ngx_http_core_loc_conf_t *pclcf)

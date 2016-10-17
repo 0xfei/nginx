@@ -82,8 +82,11 @@ ngx_init_modules(ngx_cycle_t *cycle)
 }
 
 
+/*
+    return max number of index which been used + 1
+*/
 ngx_int_t
-ngx_count_modules(ngx_cycle_t *cycle, ngx_uint_t type)  /* return max number of index which been used + 1*/
+ngx_count_modules(ngx_cycle_t *cycle, ngx_uint_t type)
 {
     ngx_uint_t     i, next, max;
     ngx_module_t  *module;
