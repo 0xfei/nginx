@@ -426,6 +426,7 @@ ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last) /*call all commands */
                 conf = &(((void **) cf->ctx)[cf->cycle->modules[i]->index]);
 
             } else if (cf->ctx) {
+                /* for NGX_HTTP_SRV_CONF etc. */
                 confp = *(void **) ((char *) cf->ctx + cmd->conf);
 
                 if (confp) {
