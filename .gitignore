@@ -5,4 +5,4 @@
 objs/*
 conf/*
 sbin/*
-Makefile
+./Makefile
